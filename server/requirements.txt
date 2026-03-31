@@ -1,3 +1,10 @@
+fastapi
+uvicorn
+supabase
+pydantic
+pydantic-settings
+python-multipart
+# the following are inherited from the ML algorithms
 PyPDF2
 nltk
 pandas

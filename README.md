@@ -1,111 +1,91 @@
-# 📝 Resume Ranking System
+# Resume Ranking System
 
-A sophisticated web-based application that automatically ranks resumes based on company-specific preferences using advanced NLP techniques, machine learning, and modern web technologies.
+Welcome to the modernized **Resume Ranking System**. This project has recently undergone a major architectural migration: we have entirely sunsetted the legacy Node.js/Mongoose REST API in favor of a fast, native **Python FastAPI** and **Supabase (PostgreSQL)** service.
 
-## 🚀 Key Features
+## 🚀 Architecture Overview
 
-- **Intelligent Resume Parsing**: Extracts 9 key metrics including GPA, skills, projects, and experience using NLP
-- **Weighted Scoring Algorithm**: Implements a sophisticated scoring system (35% skills, 25% education, 25% projects, 15% experience)
-- **Real-time Ranking**: Automatically scores and ranks resumes against multiple companies simultaneously
-- **Pattern Recognition**: Advanced text analysis for project detection and skill extraction
-- **Responsive Dashboard**: Interactive UI for viewing candidate rankings and company-wise performance metrics
+This system fundamentally operates across 3 interconnected domains:
 
-## 💻 Tech Stack
+1. **Frontend**: React-based SPA (Single Page Application) styled with Tailwind CSS and Framer Motion for beautiful micro-animations.
+2. **Backend Engine**: A Python-based FastAPI application serving asynchronous HTTP requests. It organically hosts and computes NLP tasks natively without spawning expensive external OS sub-processes.
+3. **Database**: Supabase PostgreSQL handles relational tracking of companies, parsed resume features, and computed rankings.
 
-### Backend
-- Node.js + Express.js
-- Python (NLP, NLTK, spaCy, PyTorch)
-- MongoDB
-- RESTful APIs
+### Pipeline Diagram
 
-### Frontend
-- React.js
-- Tailwind CSS
-- Modern UI/UX Design
+![System Architecture](docs/assets/architecture.svg)
+
+*(Generated via Graphviz)*
+
+---
+
+## 🎨 User Interface Highlights
+
+### 1. Dashboard & Resume Upload
+The landing page allows candidates to instantaneously upload their `.pdf` or `.docx` resumes. The backend extracts deep syntactic knowledge, runs it against the ML NLP engines seamlessly, and returns a UUID payload in milliseconds.
+
+![Dashboard Upload Screen](docs/assets/home.png)
+
+### 2. Company Directory
+The system incorporates data derived directly from the massive `BTech_Companies_NLP` dataset, holding deep analysis parameters (minimum CPIs, preferred technologies, core subjects) for hundreds of top-tier engineering companies.
+
+![Companies Directory](docs/assets/companies.png)
+
+### 3. Dynamic Analysis & Ranking Board
+After a resume is computed, candidates can preview their semantic extraction profile (Education, Experience, Project Keywords).
+
+Most crucially, they have an auto-generated leaderboard that scores and ranks their alignment with all active companies to identify primary hiring targets.
+
+![Ranking Analysis Screen](docs/assets/analysis.png)
+
+---
+
+## 🛠 Next-Gen Improvements
+
+#### Eradicating the N+1 Database Query Problem
+Under the earlier iterations of the backend, rendering the **Analysis Dashboard** produced over 300 sequential database queries over the network, drastically slowing down user requests and blocking the Python thread pool.
+
+This was resolved with **Bulk `.in_()` Fetching**. The FastAPI endpoint `/api/resumes/{uid}` has been rewritten to intercept the UUIDs of ranked companies and resolve all of them using a single efficient Supabase metadata query—reducing execution time from several seconds to milliseconds.
+
+#### NLP Pipeline Enhancements
+Previously, `spaCy` operations had to be booted into an independent Node.js child-process shell on every single upload. By housing the REST endpoints in the exact same native Python execution environment as the machine learning scripts, models are securely loaded and cached into RAM immediately on boot, skipping heavy initialization phases entirely.
+
+---
+
+## 👨‍💻 Running Locally
+
+You'll need two separate terminal sessions to start the stack concurrently.
+
+**1. Launch the React Client**
+```bash
+cd client
+npm start
+```
+*Frontend runs on http://localhost:3000*
+
+**2. Launch the FastAPI Backend**
+```bash
+cd server
+python -m venv venv
+venv\Scripts\activate
+pip install -r requirements.txt
+
+# Activate via Uvicorn for hot-reloading
+uvicorn app.main:app --reload --port 5000
+```
+*Backend runs on http://127.0.0.1:5000*
+
+Make sure the backend `server/.env` file correctly embeds your `SUPABASE_URL` and `SUPABASE_SERVICE_KEY`.
+
+---
 
 ## 👥 Team Contributions
 
-### Aditya Onam (@AdityaOnam)
-**Role: Model Designer**
-- Led the development of the weighted scoring algorithm
-- Implemented the core ranking system architecture
-- Data Collection
-- Generate the data for model training
+*This project was developed through the collaborative efforts of the following team members:*
 
-### Aditya Gupta (@code-epic-adi)
-**Role: Data Engineer**
-- Implemented resume data extraction and preprocessing
-- Developed the PDF text extraction system
-- Implemented data validation and cleaning processes
-- Generate the data for model training
+| Team Member | Core Contributions |
+| :--- | :--- |
+| **Aditya Onam** | *Lead Developer* - System Migration, Python NLP Pipeline, User Interface, & Supabase Integration. |
+| **[Teammate Name]** | *[Role]* - [Placeholder for contributions] |
+| **[Teammate Name]** | *[Role]* - [Placeholder for contributions] |
 
-### Varada Patel
-**Role: NLP Engineer**
-- Developed the skill extraction system
-- Implemented text similarity analysis
-- Enhanced keyword extraction using TF-IDF
-- Optimized NLP processing for better accuracy
-
-### Kushal Kesherwani (@Krishal23)
-**Role: Deployment Engineer**
-- Developed the React.js frontend
-- Implemented the real-time ranking dashboard
-- Created responsive UI components
-- Integrated NLP components with the Node.js backend
-- Integrated MongoDB for efficient data storage
-
-### Sarthak Kushwah
-**Role: Fairness & Explainability Engineer**
-- Implemented scoring transparency
-- Developed ranking validation system
-- Ensured fair evaluation across different resume formats
-- Implemented error handling
-
-## 🛠️ Setup Instructions
-
-1. **Clone the Repository**
-```bash
-git clone https://github.com/Krishal23/resume-ranking-system.git
-cd resume-ranking-system
-```
-
-2. **MongoDB Setup**
-- Ensure MongoDB is installed and running on your system
-- Create a `.env` file in the server root directory:
-```
-MONGO_URI=mongodb://localhost:27017/resume_ranking
-```
-
-3. **Backend Setup**
-```bash
-cd server
-pip install -r requirements.txt
-npm install
-npm start
-```
-
-4. **Frontend Setup**
-```bash
-cd client
-npm install
-npm run dev
-```
-
-## 📊 Project Structure
-```
-resume-ranking-system/
-├── client/                 # React frontend
-├── server/                 # Node.js + Express backend
-│   ├── python/            # Python scripts for resume parsing
-│   ├── controllers/       # API controllers
-│   ├── models/           # Database models
-│   ├── routes/           # API routes
-│   └── services/         # Business logic
-└── README.md
-```
-
-## ✨ Contributing
-Contributions, issues, and feature requests are welcome! Feel free to open an issue or submit a pull request.
-
-
-
+> **Note:** Please update this placeholder section with your teammate's names and specific project contributions!
