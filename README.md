@@ -80,12 +80,10 @@ Make sure the backend `server/.env` file correctly embeds your `SUPABASE_URL` an
 
 ## 👥 Team Contributions
 
-*This project was developed through the collaborative efforts of the following team members:*
+| Name | Role | Contributions |
+|------|------|--------------|
+| Aditya Onam ([@AdityaOnam](https://github.com/AdityaOnam)) | Model Designer | - Led the development of the weighted scoring algorithm<br>- Implemented the core ranking system architecture<br>- Data Collection: Generated the data for model training |
+| Aditya Gupta ([@code-epic-adi](https://github.com/code-epic-adi)) | Data Engineer | - Implemented resume data extraction and preprocessing<br>- Developed the PDF text extraction system<br>- Implemented data validation and cleaning processes<br>- Generate the data for model training |
+| Varada Patel | NLP Engineer | - Developed the skill extraction system<br>- Implemented text similarity analysis<br>- Enhanced keyword extraction using TF-IDF<br>- Optimized NLP processing for better accuracy |
+| Kushal Kesherwani ([@Krishal23](https://github.com/Krishal23)) | Deployment Engineer | - Developed the React.js frontend<br>- Implemented the real-time ranking dashboard<br>- Created responsive UI components<br>- Integrated NLP components with the Node.js backend<br>- Integrated MongoDB for efficient data storage |
 
-| Team Member | Core Contributions |
-| :--- | :--- |
-| **Aditya Onam** | *Lead Developer* - System Migration, Python NLP Pipeline, User Interface, & Supabase Integration. |
-| **[Teammate Name]** | *[Role]* - [Placeholder for contributions] |
-| **[Teammate Name]** | *[Role]* - [Placeholder for contributions] |
-
-> **Note:** Please update this placeholder section with your teammate's names and specific project contributions!
