@@ -1,74 +1,75 @@
 # Resume Ranking System Documentation
 
-Welcome to the modernized **Resume Ranking System**. This project has recently undergone a major architectural migration: we have entirely sunsetted the legacy Node.js/Mongoose REST API in favor of a fast, native native **Python FastAPI** and **Supabase (PostgreSQL)** service.
+The Resume Ranking System parses, analyzes, and ranks resumes against company hiring criteria. The system has migrated from a legacy Node.js/Mongoose REST API to a Python FastAPI service integrated with Supabase (PostgreSQL).
 
-## 🚀 Architecture Overview
+## Architecture Overview
 
-This system fundamentally operates across 3 interconnected domains:
+The system consists of three main components:
 
-1. **Frontend**: React-based SPA (Single Page Application) styled with Tailwind CSS and Framer Motion for beautiful micro-animations.
-2. **Backend Engine**: A Python-based FastAPI application serving asynchronous HTTP requests. It organically hosts and computes NLP tasks without spawning expensive external OS sub-processes.
-3. **Database**: Supabase PostgreSQL handles relational tracking of companies, parsed resume features, and computed rankings.
+1. **Frontend**: A React-based Single Page Application (SPA) styled with Tailwind CSS and enhanced with Framer Motion animations.
+2. **Backend Engine**: A Python-based FastAPI application serving asynchronous HTTP requests. It processes NLP tasks natively, avoiding the overhead of external OS sub-processes.
+3. **Database**: Supabase PostgreSQL for relational tracking of companies, resume data, and computed rankings.
 
 ### Pipeline Diagram
 
-![System Architecture](./assets/architecture.svg)
+![Pipeline Diagram](./assets/architecture.png)
 
-*(Generated via Graphviz)*
 
 ---
 
-## 🎨 User Interface Highlights
+## User Interface Highlights
 
 ### 1. Dashboard & Resume Upload
-The landing page allows candidates to instantaneously upload their `.pdf` or `.docx` resumes. The backend extracts deep syntactic knowledge, runs it against the ML NLP engines seamlessly, and returns a UUID payload in milliseconds.
+Candidates can upload resumes in `.pdf` or `.docx` format. The backend extracts text, runs the evaluation models, and returns the processing result.
 
 ![Dashboard Upload Screen](./assets/home.png)
 
 ### 2. Company Directory
-The system incorporates data derived directly from the massive `BTech_Companies_NLP` dataset, holding deep analysis parameters (minimum CPIs, preferred technologies, core subjects) for hundreds of top-tier engineering companies.
+Displays criteria (such as minimum CPI, preferred technologies, and core subjects) for engineering companies, sourced from the `BTech_Companies_NLP` dataset.
 
 ![Companies Directory](./assets/companies.png)
 
-### 3. Dynamic Analysis & Ranking Board
-After a resume is computed, candidates can preview their semantic extraction profile (Education, Experience, Project Keywords).
-
-Most crucially, they have an auto-generated leaderboard that scores and ranks their alignment with all active companies to identify primary hiring targets.
+### 3. Analysis & Ranking Leaderboard
+Once analyzed, candidates can view their parsed resume details (Education, Experience, Project Keywords) along with a ranked leaderboard matching them with active companies based on score alignment.
 
 ![Ranking Analysis Screen](./assets/analysis.png)
 
 ---
 
-## 🛠 Next-Gen Improvements
+## Optimization & Improvements
 
-#### Eradicating the N+1 Database Query Problem
-Under the earlier iterations of the backend, rendering the **Analysis Dashboard** produced over 300 sequential database queries over the network, drastically slowing down user requests and blocking the Python thread pool.
+### N+1 Query Resolution
+In earlier versions, rendering the analysis dashboard triggered over 300 sequential database queries. This was resolved by implementing bulk fetches using Supabase `.in_()` filters. The `/api/resumes/{uid}` endpoint resolves ranked company metadata in a single batch query, reducing response times from seconds to less than `80ms`.
 
-This was resolved with **Bulk `.in_()` Fetching**. The FastAPI endpoint `/api/resumes/{uid}` has been rewritten to intercept the UUIDs of ranked companies and resolve all of them using a single efficient Supabase metadata query—reducing execution time from several seconds to less than `80ms`.
-
-#### NLP Speedups
-Previously, `spaCy` operations had to be booted into an independent node child-process wrapper on every single upload. By housing the REST endpoints in the exact same native Python execution environment as the machine learning scripts, models are securely loaded and cached into RAM immediately on boot, skipping heavy initialization phases entirely.
+### NLP Pipeline Optimization
+Previously, `spaCy` operations ran in an independent Node.js child-process shell per upload. Moving the REST API to Python allows the models to be loaded and cached in RAM on boot, eliminating initialization latency for subsequent uploads.
 
 ---
 
-## 👨‍💻 Running Locally
+## Running Locally
 
-You'll need two separate terminal sessions to start the stack concurrently.
+Run the frontend and backend services in separate terminal sessions.
 
-**1. Launch the React Client**
+### 1. React Client
 ```bash
 cd client
 npm start
 ```
-*Frontend runs on http://localhost:3000*
+The frontend runs on `http://localhost:3000`.
 
-**2. Launch the FastAPI Backend**
+### 2. FastAPI Backend
 ```bash
 cd server
+python -m venv venv
+# On Windows:
+venv\Scripts\activate
+# On macOS/Linux:
+# source venv/bin/activate
 
-# Activate via Uvicorn for hot-reloading
+pip install -r requirements.txt
 uvicorn app.main:app --reload --port 5000
 ```
-*Backend runs on http://127.0.0.1:5000*
+The backend runs on `http://127.0.0.1:5000`.
 
-Make sure the backend `.env` file correctly retains the `SUPABASE_URL` and `SUPABASE_SERVICE_KEY` environment variables.
+Ensure the `server/.env` file is configured with your `SUPABASE_URL` and `SUPABASE_SERVICE_KEY`.
+
