@@ -1,9 +1,9 @@
 # Phase 1: Project Setup (Person 1)
-- [ ] Setup Git repository
-- [ ] Setup FastAPI project
-- [ ] Setup React frontend
-- [ ] Configure Supabase backend (Keys added)
-- [ ] Setup API structure
+- [x] Setup Git repository
+- [x] Setup FastAPI project
+- [x] Setup React frontend
+- [x] Configure Supabase backend (Keys added)
+- [x] Setup API structure
 
 # Phase 2: Resume Upload
 - [x] Build Resume Upload API (Person 1)
