@@ -178,30 +178,32 @@ Project Structure
 resume-analyzer-v2/
 │
 ├── server/
-│   ├── main.py                      # FastAPI app, CORS, startup
-│   ├── config.py                    # Supabase URL/key, model paths
 │   ├── .env                         # Environment variables
 │   ├── requirements.txt
 │   │
-│   ├── routers/
-│   │   ├── resumes.py               # Upload, parse, ATS endpoints
-│   │   ├── analysis.py              # Company match, recommendations
-│   │   ├── companies.py             # Company CRUD, bulk import
-│   │   └── rankings.py              # Leaderboard endpoints
-│   │
-│   ├── analyzers/
-│   │   ├── ats_analyzer.py          # Rule-based ATS scoring
-│   │   ├── company_matcher.py       # 3-stage ML scoring pipeline
-│   │   ├── resume_parser.py         # PDF/DOCX → structured JSON
-│   │   └── embedding_engine.py      # Sentence-BERT wrapper
-│   │
-│   ├── services/
-│   │   ├── supabase_service.py      # All database operations
-│   │   ├── ranking_service.py       # Rank computation + updates
-│   │   └── llm_service.py           # Ollama Llama 3.1 client
-│   │
-│   ├── models/
-│   │   └── schemas.py               # Pydantic request/response models
+│   ├── app/
+│   │   ├── main.py                  # FastAPI app, CORS, startup
+│   │   ├── config.py                # Supabase URL/key, model paths
+│   │   │
+│   │   ├── api/endpoints/           # (Formerly routers)
+│   │   │   ├── resumes.py           # Upload, parse, ATS endpoints
+│   │   │   ├── analysis.py          # Company match, recommendations
+│   │   │   ├── companies.py         # Company CRUD, bulk import
+│   │   │   └── rankings.py          # Leaderboard endpoints
+│   │   │
+│   │   ├── services/                # (Combined analyzers & services)
+│   │   │   ├── ats_analyzer.py      # Rule-based ATS scoring
+│   │   │   ├── company_matcher.py   # 3-stage ML scoring pipeline
+│   │   │   ├── resume_parser.py     # PDF/DOCX → structured JSON
+│   │   │   ├── embedding_engine.py  # Sentence-BERT wrapper
+│   │   │   ├── supabase_service.py  # All database operations
+│   │   │   ├── ranking_service.py   # Rank computation + updates
+│   │   │   └── llm_service.py       # Ollama Llama 3.1 client
+│   │   │
+│   │   ├── models/
+│   │   │   └── schemas.py           # Pydantic request/response models
+│   │   │
+│   │   └── core/                    # Core configuration and security
 │   │
 │   └── data/
 │       ├── action_words.json        # Strong/weak verb lists
