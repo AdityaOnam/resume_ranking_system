@@ -1,0 +1,8 @@
+{
+  "languages": ["Python", "JavaScript", "TypeScript", "Java", "C++", "C#", "Ruby", "Go", "Rust", "Swift", "Kotlin", "PHP", "HTML", "CSS", "SQL"],
+  "frameworks": ["React", "Angular", "Vue", "Next.js", "Django", "FastAPI", "Flask", "Spring Boot", "Express", "Ruby on Rails", ".NET", "Tailwind CSS"],
+  "ml_ai": ["TensorFlow", "PyTorch", "scikit-learn", "Keras", "Pandas", "NumPy", "OpenCV", "NLTK", "spaCy", "Hugging Face", "LLMs"],
+  "databases": ["PostgreSQL", "MongoDB", "MySQL", "Redis", "Elasticsearch", "Cassandra", "Supabase", "Firebase", "Oracle", "SQLite"],
+  "devops": ["Docker", "Kubernetes", "AWS", "Azure", "GCP", "CI/CD", "Jenkins", "GitHub Actions", "Terraform", "Ansible", "Linux", "Git"],
+  "tools": ["Jira", "Figma", "Postman", "Webpack", "Vite", "Babel", "GraphQL", "REST API", "Agile", "Scrum"]
+}

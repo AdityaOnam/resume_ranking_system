@@ -2,6 +2,11 @@
 /node_modules
 /client/node_modules
 
+# Python
+server/venv/
+__pycache__/
+*.pyc
+
 # Production
 /build
 /client/build
