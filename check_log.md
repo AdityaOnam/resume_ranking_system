@@ -12,7 +12,7 @@
 
 # Phase 3: Resume Analysis
 - [ ] Connect Upload API with Parser (Person 1)
-- [ ] Generate Embeddings & Skill Extraction (Person 2)
+- [x] Generate Embeddings & Skill Extraction (Person 2)
 
 # Phase 4: ATS Engine
 - [ ] Create ATS API & Dashboard (Person 1)
