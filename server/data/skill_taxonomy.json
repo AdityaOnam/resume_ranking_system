@@ -1,8 +1,140 @@
 {
-  "languages": ["Python", "JavaScript", "TypeScript", "Java", "C++", "C#", "Ruby", "Go", "Rust", "Swift", "Kotlin", "PHP", "HTML", "CSS", "SQL"],
-  "frameworks": ["React", "Angular", "Vue", "Next.js", "Django", "FastAPI", "Flask", "Spring Boot", "Express", "Ruby on Rails", ".NET", "Tailwind CSS"],
-  "ml_ai": ["TensorFlow", "PyTorch", "scikit-learn", "Keras", "Pandas", "NumPy", "OpenCV", "NLTK", "spaCy", "Hugging Face", "LLMs"],
-  "databases": ["PostgreSQL", "MongoDB", "MySQL", "Redis", "Elasticsearch", "Cassandra", "Supabase", "Firebase", "Oracle", "SQLite"],
-  "devops": ["Docker", "Kubernetes", "AWS", "Azure", "GCP", "CI/CD", "Jenkins", "GitHub Actions", "Terraform", "Ansible", "Linux", "Git"],
-  "tools": ["Jira", "Figma", "Postman", "Webpack", "Vite", "Babel", "GraphQL", "REST API", "Agile", "Scrum"]
+  "languages": [
+    "Python", "Java", "C++", "C", "C#", "JavaScript", "TypeScript", "Go", "Rust",
+    "Ruby", "PHP", "Swift", "Kotlin", "Scala", "Perl", "R", "MATLAB", "Dart",
+    "Lua", "Haskell", "Elixir", "Clojure", "Erlang", "Julia", "Shell", "Bash",
+    "PowerShell", "Assembly", "COBOL", "Fortran", "Groovy", "Objective-C",
+    "Visual Basic", "Apex", "Solidity", "VHDL", "Verilog", "SQL", "PL/SQL", "T-SQL"
+  ],
+  "frameworks_frontend": [
+    "React", "Angular", "Vue.js", "Svelte", "Next.js", "Nuxt.js", "Gatsby",
+    "Ember.js", "Backbone.js", "jQuery", "Bootstrap", "Tailwind CSS",
+    "Material UI", "Ant Design", "Chakra UI", "Remix", "Astro", "SolidJS"
+  ],
+  "frameworks_backend": [
+    "Django", "Flask", "FastAPI", "Spring Boot", "Spring MVC", "Express.js",
+    "Node.js", "Ruby on Rails", "Laravel", "Symfony", "ASP.NET", ".NET",
+    "Gin", "Echo", "Fiber", "Phoenix", "Actix", "Rocket", "NestJS", "Koa",
+    "Hapi.js", "Tornado", "Pyramid", "Bottle", "Quart", "Sanic"
+  ],
+  "ml_ai": [
+    "TensorFlow", "PyTorch", "Keras", "scikit-learn", "XGBoost", "LightGBM",
+    "CatBoost", "OpenCV", "Hugging Face", "LangChain", "spaCy",
+    "NLTK", "Gensim", "Stable Diffusion", "YOLO", "MediaPipe",
+    "MLflow", "Kubeflow", "Ray", "Weights & Biases", "DVC",
+    "Pandas", "NumPy", "SciPy", "Matplotlib", "Seaborn", "Plotly",
+    "Spark MLlib", "ONNX", "TensorRT", "JAX", "Caffe",
+    "Machine Learning", "Deep Learning", "Natural Language Processing",
+    "Computer Vision", "Reinforcement Learning", "Generative AI",
+    "Large Language Models", "Neural Networks", "Transfer Learning",
+    "Transformer", "Attention Mechanism", "GANs", "Diffusion Models",
+    "Object Detection", "Image Classification", "Sentiment Analysis",
+    "Named Entity Recognition", "Speech Recognition", "Recommendation Systems"
+  ],
+  "data_engineering": [
+    "Apache Spark", "Apache Kafka", "Apache Flink", "Apache Airflow",
+    "Apache Beam", "Hadoop", "Hive", "Pig", "Presto", "Trino",
+    "dbt", "Snowflake", "Databricks", "BigQuery", "Redshift",
+    "ETL", "Data Pipeline", "Data Warehouse", "Data Lake",
+    "Data Modeling", "Data Governance", "Data Quality",
+    "Tableau", "Power BI", "Looker", "Metabase", "Grafana",
+    "Apache Superset", "D3.js", "Streamlit", "Dash"
+  ],
+  "databases": [
+    "PostgreSQL", "MySQL", "MongoDB", "Redis", "Cassandra", "DynamoDB",
+    "Firebase", "Supabase", "Neo4j", "CouchDB", "InfluxDB",
+    "Elasticsearch", "SQLite", "MariaDB", "Oracle", "SQL Server",
+    "CockroachDB", "TimescaleDB", "Memcached", "RabbitMQ",
+    "Apache Pulsar", "NATS"
+  ],
+  "devops_cloud": [
+    "AWS", "Amazon Web Services", "Azure", "Google Cloud Platform", "GCP",
+    "Docker", "Kubernetes", "Jenkins", "GitLab CI", "GitHub Actions",
+    "CircleCI", "Travis CI", "Terraform", "Ansible", "Puppet", "Chef",
+    "Vagrant", "Packer", "Helm", "ArgoCD", "Flux", "Istio", "Envoy",
+    "Nginx", "Apache", "Caddy", "HAProxy", "Consul", "Vault",
+    "Prometheus", "Grafana", "Datadog", "New Relic", "Splunk", "ELK Stack",
+    "CloudFormation", "Pulumi", "Serverless Framework",
+    "CI/CD", "DevOps", "Infrastructure as Code", "Site Reliability Engineering",
+    "Cloud Computing", "Microservices", "Service Mesh", "Container Orchestration",
+    "Load Balancing", "Auto Scaling", "Blue-Green Deployment",
+    "Canary Deployment", "Feature Flags"
+  ],
+  "mobile": [
+    "React Native", "Flutter", "Swift", "SwiftUI", "Kotlin",
+    "Jetpack Compose", "Android SDK", "iOS SDK", "Xamarin",
+    "Ionic", "Cordova", "Capacitor", "Expo",
+    "Mobile App Development", "Android Development", "iOS Development",
+    "Cross-Platform Development"
+  ],
+  "web_technologies": [
+    "HTML", "CSS", "SASS", "LESS", "WebSocket", "GraphQL",
+    "REST API", "gRPC", "OAuth", "JWT", "WebRTC",
+    "Service Workers", "Progressive Web App", "Web Assembly",
+    "Webpack", "Vite", "Rollup", "Babel", "ESLint", "Prettier",
+    "Web Development", "Full-Stack", "Front-End", "Back-End",
+    "Responsive Design", "Web Accessibility", "SEO"
+  ],
+  "cybersecurity": [
+    "Penetration Testing", "Ethical Hacking", "Vulnerability Assessment",
+    "SIEM", "SOC", "OWASP", "Burp Suite", "Metasploit", "Nmap",
+    "Wireshark", "Snort", "Kali Linux", "Cryptography", "Encryption",
+    "Firewall", "VPN", "IDS/IPS", "Malware Analysis", "Digital Forensics",
+    "Network Security", "Application Security", "Cloud Security",
+    "Identity and Access Management", "Zero Trust", "Compliance",
+    "GDPR", "SOC 2", "ISO 27001", "PCI DSS"
+  ],
+  "system_concepts": [
+    "Data Structures", "Algorithms", "System Design", "Object-Oriented Programming",
+    "Design Patterns", "SOLID Principles", "Functional Programming",
+    "Concurrency", "Multithreading", "Distributed Systems",
+    "Operating Systems", "Computer Architecture", "Computer Networks",
+    "Compiler Design", "Database Management Systems", "Software Engineering",
+    "Agile", "Scrum", "Kanban", "Test-Driven Development",
+    "Domain-Driven Design", "Event-Driven Architecture",
+    "RESTful Architecture", "Microservices Architecture",
+    "Message Queues", "Caching Strategies", "CAP Theorem",
+    "Consensus Algorithms", "Fault Tolerance", "High Availability"
+  ],
+  "tools": [
+    "Git", "GitHub", "GitLab", "Bitbucket", "Jira", "Confluence",
+    "Slack", "Trello", "Asana", "Notion", "Linear",
+    "Figma", "Sketch", "Adobe XD", "InVision",
+    "Postman", "Insomnia", "Swagger", "VS Code", "IntelliJ IDEA",
+    "Vim", "Emacs", "Linux", "Unix", "Windows Server",
+    "Jupyter Notebook", "Google Colab", "Anaconda",
+    "LaTeX", "Markdown"
+  ],
+  "engineering_domains": [
+    "Mechanical Engineering", "Civil Engineering", "Chemical Engineering",
+    "Electrical Engineering", "Electronics Engineering", "Petroleum Engineering",
+    "Aerospace Engineering", "Automobile Engineering", "Biomedical Engineering",
+    "Environmental Engineering", "Metallurgical Engineering",
+    "AutoCAD", "SolidWorks", "CATIA", "ANSYS", "MATLAB Simulink",
+    "PLC Programming", "SCADA", "Embedded Systems", "IoT",
+    "Internet of Things", "FPGA", "Microcontrollers", "PCB Design",
+    "VLSI", "Signal Processing", "Control Systems", "Robotics",
+    "Industrial Automation", "Power Systems", "Renewable Energy",
+    "CAD", "CAM", "FEA", "CFD", "3D Printing"
+  ],
+  "business_finance": [
+    "Financial Modeling", "Financial Analysis", "Investment Banking",
+    "Credit Risk", "Risk Management", "Quantitative Analysis",
+    "Equity Research", "Portfolio Management", "Derivatives",
+    "Accounting", "Auditing", "Tax", "Compliance",
+    "Business Analysis", "Business Intelligence", "Strategic Planning",
+    "Process Improvement", "Management Consulting", "Market Research",
+    "Digital Marketing", "SEO", "SEM", "Google Analytics",
+    "Content Marketing", "Social Media Marketing",
+    "Supply Chain Management", "Operations Management",
+    "Project Management", "Product Management", "Stakeholder Management",
+    "SAP", "ERP", "Salesforce", "CRM", "Blockchain", "Fintech"
+  ],
+  "soft_skills": [
+    "Leadership", "Communication", "Teamwork", "Problem Solving",
+    "Critical Thinking", "Time Management", "Adaptability",
+    "Collaboration", "Creativity", "Presentation Skills",
+    "Public Speaking", "Negotiation", "Mentoring", "Coaching",
+    "Decision Making", "Conflict Resolution", "Emotional Intelligence"
+  ]
 }
