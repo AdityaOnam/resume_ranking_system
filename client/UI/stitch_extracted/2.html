@@ -1,0 +1,441 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en">
+
+<head>
+    <meta charset="utf-8" />
+    <meta content="width=device-width, initial-scale=1.0" name="viewport" />
+    <title>Candidate Profile - ResumeRanker</title>
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap"
+        rel="stylesheet" />
+    <link
+        href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&amp;family=Hanken+Grotesk:wght@400;500;600;700&amp;display=swap"
+        rel="stylesheet" />
+    <script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "primary": "#6c63ff",
+                        "primary-fixed-dim": "#a29bff",
+                        "on-primary-fixed": "#1a164c",
+                        "outline": "#4a4d66",
+                        "surface-bright": "#222543",
+                        "error-container": "#93000a",
+                        "background": "#0F1023",
+                        "secondary": "#22c55e",
+                        "tertiary-container": "#4a3c8c",
+                        "surface-dim": "#0a0b1a",
+                        "surface-container-low": "#171933",
+                        "primary-fixed": "#c7c3ff",
+                        "on-secondary-container": "#032812",
+                        "secondary-container": "#dcfce7",
+                        "on-primary-fixed-variant": "#3f36a8",
+                        "on-tertiary-container": "#e1d8ff",
+                        "inverse-surface": "#e4e1ed",
+                        "inverse-primary": "#494bd6",
+                        "surface-variant": "#222543",
+                        "on-secondary-fixed": "#011c0c",
+                        "surface-tint": "#6c63ff",
+                        "surface-container-highest": "#2a2d52",
+                        "on-background": "#e2e4f0",
+                        "on-error-container": "#ffdad6",
+                        "inverse-on-surface": "#303038",
+                        "on-tertiary": "#ffffff",
+                        "tertiary-fixed": "#e1d8ff",
+                        "on-tertiary-fixed": "#150645",
+                        "tertiary": "#b4a3ff",
+                        "error": "#ffb4ab",
+                        "on-secondary-fixed-variant": "#044f24",
+                        "surface-container-high": "#1f2240",
+                        "surface": "#1A1D3A",
+                        "on-secondary": "#ffffff",
+                        "on-primary-container": "#ffffff",
+                        "on-surface-variant": "#a3a6c4",
+                        "surface-container": "#1A1D3A",
+                        "primary-container": "#554be6",
+                        "surface-container-lowest": "#0a0b1a",
+                        "on-primary": "#ffffff",
+                        "on-surface": "#f1f3fa",
+                        "secondary-fixed": "#86efac",
+                        "on-tertiary-fixed-variant": "#342375",
+                        "outline-variant": "#343753",
+                        "on-error": "#690005",
+                        "secondary-fixed-dim": "#4ade80"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.375rem",
+                        "md": "0.5rem",
+                        "lg": "1rem",
+                        "xl": "1.5rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "section-gap": "32px",
+                        "card-padding": "24px",
+                        "input-padding": "12px 16px",
+                        "container-margin": "32px",
+                        "gutter": "20px"
+                    },
+                    "fontFamily": {
+                        "label-md": ["Geist", "sans-serif"],
+                        "headline-lg": ["Geist", "sans-serif"],
+                        "body-lg": ["Geist", "sans-serif"],
+                        "headline-md": ["Geist", "sans-serif"],
+                        "headline-xl": ["Geist", "sans-serif"],
+                        "mono-data": ["Geist", "monospace"],
+                        "body-md": ["Geist", "sans-serif"]
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body {
+            background-color: theme('colors.background');
+            color: theme('colors.on-background');
+            font-family: theme('fontFamily.body-md');
+        }
+
+        .cyber-border {
+            border: 1px solid theme('colors.outline-variant');
+        }
+
+        .cyber-panel {
+            background-color: theme('colors.surface');
+            border: 1px solid theme('colors.outline-variant');
+            border-radius: theme('borderRadius.lg');
+            padding: theme('spacing.card-padding');
+            box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.2);
+            backdrop-filter: blur(10px);
+        }
+
+        .skill-tag {
+            background-color: theme('colors.tertiary-container');
+            color: theme('colors.on-tertiary-container');
+            border: 1px solid rgba(180, 163, 255, 0.2);
+            border-radius: theme('borderRadius.md');
+            padding: 6px 14px;
+            font-family: theme('fontFamily.mono-data');
+            font-size: 13px;
+        }
+    </style>
+</head>
+
+<body class="flex flex-col h-screen overflow-hidden antialiased">
+    <!-- TopAppBar -->
+    <header
+        class="bg-surface/80 backdrop-blur-md border-b border-outline-variant flex justify-between items-center h-16 px-8 w-full shrink-0 relative z-20">
+        <div class="flex items-center gap-8">
+            <div class="flex items-center gap-3 hidden md:flex font-headline-xl text-on-surface">
+                <div
+                    class="w-8 h-8 rounded-lg bg-gradient-to-br from-primary to-primary-container text-white flex items-center justify-center font-bold text-lg shadow-lg shadow-primary/20">
+                    R</div>
+                <span class="text-xl tracking-tight">ResumeRanker</span>
+            </div>
+            <nav class="hidden md:flex items-center gap-6 h-full mt-1">
+                <a class="text-on-surface-variant hover:text-on-surface pb-4 hover:text-primary transition-colors pt-4 font-body-md text-sm"
+                    href="#">Upload Resume</a>
+                <a class="text-on-surface-variant hover:text-on-surface pb-4 hover:text-primary transition-colors pt-4 font-body-md text-sm"
+                    href="#">Companies</a>
+                <a class="text-primary border-b-2 border-primary pb-4 font-bold hover:text-primary transition-colors pt-4 font-body-md text-sm"
+                    href="#">ATS Dashboard</a>
+            </nav>
+        </div>
+        <div class="flex items-center gap-4">
+            <button
+                class="text-on-surface-variant hover:text-on-surface transition-colors p-2 rounded-full hover:bg-surface-variant">
+                <span class="material-symbols-outlined text-[20px]">dark_mode</span>
+            </button>
+            <button
+                class="text-on-surface-variant hover:text-on-surface transition-colors p-2 rounded-full hover:bg-surface-variant relative">
+                <span class="material-symbols-outlined text-[20px]">notifications</span>
+                <span class="absolute top-2 right-2 w-2 h-2 bg-error rounded-full ring-2 ring-surface"></span>
+            </button>
+            <div class="w-8 h-8 rounded-full overflow-hidden border-2 border-outline-variant ml-2">
+                <img alt="User Profile Avatar" class="w-full h-full object-cover"
+                    data-alt="A futuristic minimalist corporate avatar showing a sleek silver robot head with glowing purple eyes on a dark navy background."
+                    src="https://lh3.googleusercontent.com/aida-public/AB6AXuAEqIHOBbhSMyA1PKVsgecBIEB3NURqFi1Y3F-H5GoGGQTzF0CQV5B4T4DRI80JjXpUPQbDgcpPkwGeL14H1dD1so7henCN5tW5O8WX4YIBru3AGScT7GdSrDBv3-ds2KmRMTd2gIF_Y94lRHuKwQeDKp4LzswvvNRoYrD2KWSi13ll3DZBJeaWngQ4eoPrY9s4lSmTdiu5KEHtfNxv33fEXiMcuFp3fIR1wV51ihB_S-jH0no_fKQuNyc-ggGRVjjL14nt3zX_n8Q" />
+            </div>
+        </div>
+    </header>
+    <div class="flex flex-1 overflow-hidden">
+        <!-- SideNavBar -->
+        <aside
+            class="bg-surface-container-low border-r border-outline-variant docked full-height left-0 w-64 flex flex-col h-full py-6 px-4 shrink-0 hidden md:flex relative z-10">
+            <nav class="flex-1 flex flex-col gap-2">
+                <a class="flex items-center gap-3 px-4 py-3 text-on-surface-variant hover:text-on-surface transition-colors hover:bg-surface-variant/50 rounded-lg text-sm"
+                    href="#">
+                    <span class="material-symbols-outlined text-[20px]">dashboard</span>
+                    <span class="font-medium">Dashboard</span>
+                </a>
+                <a class="flex items-center gap-3 px-4 py-3 text-on-surface-variant hover:text-on-surface transition-colors hover:bg-surface-variant/50 rounded-lg text-sm"
+                    href="#">
+                    <span class="material-symbols-outlined text-[20px]">cloud_upload</span>
+                    <span class="font-medium">Upload Resume</span>
+                </a>
+                <a class="flex items-center gap-3 px-4 py-3 text-on-surface-variant hover:text-on-surface transition-colors hover:bg-surface-variant/50 rounded-lg text-sm"
+                    href="#">
+                    <span class="material-symbols-outlined text-[20px]">business</span>
+                    <span class="font-medium">Companies</span>
+                </a>
+                <a class="flex items-center gap-3 px-4 py-3 bg-primary/10 text-primary rounded-lg font-semibold transition-all duration-200 text-sm border border-primary/20"
+                    href="#">
+                    <span class="material-symbols-outlined text-[20px]">analytics</span>
+                    <span class="">ATS Dashboard</span>
+                </a>
+                <div class="my-4 border-t border-outline-variant/50 mx-2"></div>
+                <a class="flex items-center gap-3 px-4 py-3 text-on-surface-variant hover:text-on-surface transition-colors hover:bg-surface-variant/50 rounded-lg text-sm"
+                    href="#">
+                    <span class="material-symbols-outlined text-[20px]">settings</span>
+                    <span class="font-medium">Settings</span>
+                </a>
+                <a class="flex items-center gap-3 px-4 py-3 text-on-surface-variant hover:text-on-surface transition-colors hover:bg-surface-variant/50 rounded-lg text-sm"
+                    href="#">
+                    <span class="material-symbols-outlined text-[20px]">list_alt</span>
+                    <span class="font-medium">Logs</span>
+                </a>
+                <a class="flex items-center gap-3 px-4 py-3 text-on-surface-variant hover:text-on-surface transition-colors hover:bg-surface-variant/50 rounded-lg text-sm"
+                    href="#">
+                    <span class="material-symbols-outlined text-[20px]">api</span>
+                    <span class="font-medium">API Docs</span>
+                </a>
+            </nav>
+            <div class="mt-auto pt-4 border-t border-outline-variant/50 mx-2">
+                <a class="flex items-center gap-3 px-2 py-3 text-on-surface-variant hover:text-on-surface transition-colors hover:bg-surface-variant/50 rounded-lg text-sm"
+                    href="#">
+                    <span class="material-symbols-outlined text-[20px]">logout</span>
+                    <span class="font-medium">Logout</span>
+                </a>
+            </div>
+        </aside>
+        <!-- Main Content -->
+        <main class="flex-1 overflow-y-auto p-8 relative bg-background">
+            <div class="max-w-6xl mx-auto relative z-10">
+                <!-- Profile Header -->
+                <div class="flex items-center justify-between mb-8">
+                    <div class="flex items-center gap-4">
+                        <button
+                            class="w-10 h-10 flex items-center justify-center rounded-lg hover:bg-surface-variant text-on-surface-variant transition-colors border border-outline-variant bg-surface">
+                            <span class="material-symbols-outlined">arrow_back</span>
+                        </button>
+                        <div>
+                            <h1 class="text-3xl font-bold text-on-surface tracking-tight">Arjun Sharma</h1>
+                            <p class="text-sm text-on-surface-variant mt-1">arjun@example.com</p>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-4">
+                        <div
+                            class="flex items-center gap-2 px-3 py-1.5 bg-secondary/10 text-secondary border border-secondary/20 rounded-full text-xs font-medium uppercase tracking-wider">
+                            <span class="material-symbols-outlined text-[14px]"
+                                style="font-variation-settings: 'FILL' 1;">check_circle</span>
+                            Vector Stored
+                        </div>
+                        <button
+                            class="text-on-surface-variant hover:text-on-surface p-2 hover:bg-surface-variant rounded-lg transition-colors">
+                            <span class="material-symbols-outlined">close</span>
+                        </button>
+                    </div>
+                </div>
+                <!-- Profile Bento Grid -->
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+                    <!-- Extracted Skills -->
+                    <div class="cyber-panel col-span-1 lg:col-span-2">
+                        <div class="flex items-center gap-2 mb-5">
+                            <span class="material-symbols-outlined text-primary">code</span>
+                            <h2 class="text-lg font-semibold text-on-surface">Extracted Skills</h2>
+                        </div>
+                        <div class="flex flex-wrap gap-2.5">
+                            <span class="skill-tag">React</span>
+                            <span class="skill-tag">Node.js</span>
+                            <span class="skill-tag">Python</span>
+                            <span class="skill-tag">JavaScript</span>
+                            <span class="skill-tag">HTML</span>
+                            <span class="skill-tag">CSS</span>
+                            <span class="skill-tag">TailwindCSS</span>
+                            <span class="skill-tag">MongoDB</span>
+                            <span class="skill-tag">Git</span>
+                            <span class="skill-tag">REST APIs</span>
+                            <span class="skill-tag">Docker</span>
+                        </div>
+                    </div>
+                    <!-- Education -->
+                    <div class="cyber-panel flex flex-col justify-center">
+                        <div class="flex items-center gap-2 mb-5">
+                            <span class="material-symbols-outlined text-tertiary">school</span>
+                            <h2 class="text-lg font-semibold text-on-surface">Education</h2>
+                        </div>
+                        <div class="bg-surface-variant/30 p-4 rounded-lg border border-outline-variant/50">
+                            <h3 class="font-medium text-on-surface mb-1">B.Tech in Computer Science</h3>
+                            <p class="text-sm text-on-surface-variant mb-3">IIT Delhi</p>
+                            <div class="flex justify-between items-center text-xs">
+                                <span class="px-2 py-1 bg-surface-bright rounded text-on-surface font-mono">GPA:
+                                    8.71/10</span>
+                                <span class="text-on-surface-variant">2021 - 2025</span>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- Work Experience -->
+                    <div class="cyber-panel col-span-1 lg:col-span-3 relative overflow-hidden group">
+                        <div
+                            class="absolute top-0 right-0 w-48 h-48 bg-primary/10 rounded-full blur-3xl -mr-24 -mt-24 transition-opacity group-hover:opacity-100 opacity-50">
+                        </div>
+                        <div class="flex items-center gap-2 mb-6">
+                            <span class="material-symbols-outlined text-primary">work</span>
+                            <h2 class="text-lg font-semibold text-on-surface">Work Experience</h2>
+                        </div>
+                        <div class="relative pl-6 border-l border-outline-variant/60 space-y-8 ml-2">
+                            <div class="relative">
+                                <div
+                                    class="absolute -left-[31px] top-1.5 w-3.5 h-3.5 bg-primary rounded-full ring-4 ring-surface shadow-[0_0_10px_rgba(108,99,255,0.5)]">
+                                </div>
+                                <h3 class="font-medium text-on-surface text-lg">SDE Intern - Microsoft</h3>
+                                <p class="text-sm text-on-surface-variant mt-1">May 2024 - Aug 2024</p>
+                            </div>
+                            <div class="relative">
+                                <div
+                                    class="absolute -left-[31px] top-1.5 w-3.5 h-3.5 bg-outline rounded-full ring-4 ring-surface">
+                                </div>
+                                <h3 class="font-medium text-on-surface text-lg">Software Engineer Intern - Google</h3>
+                                <p class="text-sm text-on-surface-variant mt-1">Jan 2024 - Apr 2024</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <!-- AI Ranking Table -->
+                <div class="cyber-panel p-0 overflow-hidden">
+                    <div
+                        class="p-6 border-b border-outline-variant flex items-center justify-between bg-surface-container-high/30">
+                        <div class="flex items-center gap-2">
+                            <span class="material-symbols-outlined text-secondary">auto_awesome</span>
+                            <h2 class="text-lg font-semibold text-on-surface">AI Match Ranking</h2>
+                        </div>
+                        <span class="text-xs text-on-surface-variant px-3 py-1 bg-surface-variant rounded-full">Top 5
+                            Matches</span>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left border-collapse">
+                            <thead>
+                                <tr class="bg-surface-variant/20 border-b border-outline-variant">
+                                    <th
+                                        class="py-4 px-6 text-xs font-semibold uppercase tracking-wider text-on-surface-variant w-16">
+                                        #</th>
+                                    <th
+                                        class="py-4 px-6 text-xs font-semibold uppercase tracking-wider text-on-surface-variant">
+                                        Company</th>
+                                    <th
+                                        class="py-4 px-6 text-xs font-semibold uppercase tracking-wider text-on-surface-variant">
+                                        Match Score</th>
+                                    <th
+                                        class="py-4 px-6 text-xs font-semibold uppercase tracking-wider text-on-surface-variant">
+                                        Role Rank</th>
+                                    <th
+                                        class="py-4 px-6 text-xs font-semibold uppercase tracking-wider text-on-surface-variant w-1/2">
+                                        Why Matched</th>
+                                </tr>
+                            </thead>
+                            <tbody class="text-sm">
+                                <tr
+                                    class="border-b border-outline-variant/30 hover:bg-surface-variant/30 transition-colors group">
+                                    <td class="py-4 px-6 text-on-surface-variant">1</td>
+                                    <td class="py-4 px-6 text-on-surface font-medium">Microsoft</td>
+                                    <td class="py-4 px-6">
+                                        <span
+                                            class="inline-flex items-center justify-center px-2.5 py-1 rounded-full text-xs font-medium bg-secondary/10 text-secondary border border-secondary/20">95%
+                                            Match</span>
+                                    </td>
+                                    <td class="py-4 px-6 text-on-surface">
+                                        <span
+                                            class="w-6 h-6 rounded-full bg-surface-bright flex items-center justify-center text-xs text-on-surface border border-outline-variant">1</span>
+                                    </td>
+                                    <td
+                                        class="py-4 px-6 text-on-surface-variant group-hover:text-on-surface transition-colors">
+                                        Strong DSA, System Design, and relevant internship experience.</td>
+                                </tr>
+                                <tr
+                                    class="border-b border-outline-variant/30 hover:bg-surface-variant/30 transition-colors group">
+                                    <td class="py-4 px-6 text-on-surface-variant">2</td>
+                                    <td class="py-4 px-6 text-on-surface font-medium">Google</td>
+                                    <td class="py-4 px-6">
+                                        <span
+                                            class="inline-flex items-center justify-center px-2.5 py-1 rounded-full text-xs font-medium bg-secondary/10 text-secondary border border-secondary/20">93%
+                                            Match</span>
+                                    </td>
+                                    <td class="py-4 px-6 text-on-surface">
+                                        <span
+                                            class="w-6 h-6 rounded-full bg-surface-bright flex items-center justify-center text-xs text-on-surface border border-outline-variant">2</span>
+                                    </td>
+                                    <td
+                                        class="py-4 px-6 text-on-surface-variant group-hover:text-on-surface transition-colors">
+                                        Excellent problem solving and full-stack development skills.</td>
+                                </tr>
+                                <tr
+                                    class="border-b border-outline-variant/30 hover:bg-surface-variant/30 transition-colors group">
+                                    <td class="py-4 px-6 text-on-surface-variant">3</td>
+                                    <td class="py-4 px-6 text-on-surface font-medium">Amazon</td>
+                                    <td class="py-4 px-6">
+                                        <span
+                                            class="inline-flex items-center justify-center px-2.5 py-1 rounded-full text-xs font-medium bg-secondary/10 text-secondary border border-secondary/20">91%
+                                            Match</span>
+                                    </td>
+                                    <td class="py-4 px-6 text-on-surface">
+                                        <span
+                                            class="w-6 h-6 rounded-full bg-surface-bright flex items-center justify-center text-xs text-on-surface border border-outline-variant">1</span>
+                                    </td>
+                                    <td
+                                        class="py-4 px-6 text-on-surface-variant group-hover:text-on-surface transition-colors">
+                                        Good backend development and SQL skills.</td>
+                                </tr>
+                                <tr
+                                    class="border-b border-outline-variant/30 hover:bg-surface-variant/30 transition-colors group">
+                                    <td class="py-4 px-6 text-on-surface-variant">4</td>
+                                    <td class="py-4 px-6 text-on-surface font-medium">Adobe</td>
+                                    <td class="py-4 px-6">
+                                        <span
+                                            class="inline-flex items-center justify-center px-2.5 py-1 rounded-full text-xs font-medium bg-secondary/10 text-secondary border border-secondary/20">89%
+                                            Match</span>
+                                    </td>
+                                    <td class="py-4 px-6 text-on-surface">
+                                        <span
+                                            class="w-6 h-6 rounded-full bg-surface-bright flex items-center justify-center text-xs text-on-surface border border-outline-variant">2</span>
+                                    </td>
+                                    <td
+                                        class="py-4 px-6 text-on-surface-variant group-hover:text-on-surface transition-colors">
+                                        Relevant projects in ML and strong algorithms.</td>
+                                </tr>
+                                <tr class="hover:bg-surface-variant/30 transition-colors group">
+                                    <td class="py-4 px-6 text-on-surface-variant">5</td>
+                                    <td class="py-4 px-6 text-on-surface font-medium">Flipkart</td>
+                                    <td class="py-4 px-6">
+                                        <span
+                                            class="inline-flex items-center justify-center px-2.5 py-1 rounded-full text-xs font-medium bg-secondary/10 text-secondary border border-secondary/20">87%
+                                            Match</span>
+                                    </td>
+                                    <td class="py-4 px-6 text-on-surface">
+                                        <span
+                                            class="w-6 h-6 rounded-full bg-surface-bright flex items-center justify-center text-xs text-on-surface border border-outline-variant">1</span>
+                                    </td>
+                                    <td
+                                        class="py-4 px-6 text-on-surface-variant group-hover:text-on-surface transition-colors">
+                                        Good match for SDE role and DSA skills.</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                <div class="mt-8 flex justify-end">
+                    <button
+                        class="bg-gradient-to-r from-primary to-primary-container text-white hover:from-primary-fixed-dim hover:to-primary px-6 py-2.5 rounded-lg flex items-center gap-2 text-sm font-medium transition-all shadow-[0_0_15px_rgba(108,99,255,0.3)] hover:shadow-[0_0_20px_rgba(108,99,255,0.5)] border border-primary/50">
+                        <span class="material-symbols-outlined text-[18px]">download</span>
+                        Download Report
+                    </button>
+                </div>
+            </div>
+        </main>
+    </div>
+</body>
+
+</html>

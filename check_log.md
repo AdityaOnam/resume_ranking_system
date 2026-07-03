@@ -11,16 +11,16 @@
 - [x] Build Resume Parser (Person 2)
 
 # Phase 3: Resume Analysis
-- [ ] Connect Upload API with Parser (Person 1)
+- [x] Connect Upload API with Parser (Person 1)
 - [x] Generate Embeddings & Skill Extraction (Person 2)
 
 # Phase 4: ATS Engine
-- [ ] Create ATS API & Dashboard (Person 1)
-- [ ] Implement ATS scoring logic (Person 2)
+- [x] Create ATS API & Dashboard (Person 1)
+- [x] Implement ATS scoring logic (Person 2)
 
 # Phase 5: Company Management
-- [ ] Company CRUD APIs (Person 1)
-- [ ] Parse Job Descriptions (Person 2)
+- [x] Company CRUD APIs (Person 1)
+- [x] Parse Job Descriptions (Person 2)
 
 # Phase 6: Company Matching
 - [ ] Matching Dashboard & APIs (Person 1)

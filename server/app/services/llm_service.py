@@ -76,3 +76,51 @@ Respond ONLY with valid JSON. Do not include markdown formatting like ```json or
         except Exception as e:
             logger.error(f"Error communicating with Ollama or parsing JSON: {e}")
             return None
+
+    def extract_job_description_data(self, raw_text: str) -> Optional[Dict[str, Any]]:
+        """
+        Extracts structured JSON from raw job description text using Llama 3.1.
+        Matches the CompanyBase schema.
+        """
+        system_prompt = """You are an expert technical recruiter. 
+Your task is to parse the following Job Description (JD) text and extract the data into a strictly structured JSON format matching our company schema.
+If a piece of information is missing, use reasonable defaults like 0, false, or an empty list [].
+
+The JSON MUST follow this exact schema:
+{
+  "name": "string (Company Name, or infer if missing)",
+  "cpi": "number (Minimum GPA/CPI required, default 0.0)",
+  "skill_set": ["string", "string"] (All mentioned skills),
+  "internship_role": "string or null (e.g., Software Engineer Intern)",
+  "visits_iit_patna": false (Assume false unless explicitly stated),
+  "min_projects": "number (Minimum projects required, default 0)",
+  "project_keywords": ["string", "string"] (Technologies preferred for projects),
+  "branch": ["string", "string"] (Eligible branches, e.g., CSE, ECE),
+  "dsa_required": "boolean (True if Data Structures / Algorithms is mentioned)",
+  "core_skills": ["string", "string"] (Must-have core skills),
+  "description": "string (Brief summary of the role)"
+}
+
+Respond ONLY with valid JSON. Do not include markdown formatting like ```json or any conversational text."""
+
+        try:
+            response = ollama.chat(
+                model=self.model_name,
+                messages=[
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": raw_text}
+                ],
+                format='json',
+                options={
+                    "temperature": 0.1
+                }
+            )
+            
+            result_text = response['message']['content']
+            parsed_json = json.loads(result_text)
+            return parsed_json
+            
+        except Exception as e:
+            logger.error(f"Error communicating with Ollama or parsing JD JSON: {e}")
+            return None
+

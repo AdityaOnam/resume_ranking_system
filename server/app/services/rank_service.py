@@ -2,19 +2,32 @@ from app.services.rank_generator import calculate_score
 from app.core.database import supabase
 
 def generate_ranking_score(resume_data: dict, company_data: dict) -> float:
-    # Safely extract dictionary values accounting for varied formats
-    cpi = resume_data.get('CPI/GPA') or resume_data.get('CPI') or 0
-    skills = resume_data.get('Skills') or resume_data.get('Skill_Set') or []
-    projects = resume_data.get('No_of_Projects') or resume_data.get('Projects') or 0
-    proj_keywords = resume_data.get('Project_Keywords') or []
-    mobile = resume_data.get('Mobile_Number') or resume_data.get('Mobile') or ""
-    email = resume_data.get('Email_ID') or resume_data.get('Email') or ""
-    experience_raw = resume_data.get('Experience', 'No')
-    experience = 1 if experience_raw == 'Yes' else 0
+    # resume_data is now parsed_data from v2 parser
     
-    core_skills_raw = resume_data.get('Core_Computer_Skills', '')
-    core_skills = [s.strip() for s in core_skills_raw.split(',')] if core_skills_raw else []
-    branch = resume_data.get('Branch') or ''
+    # Safely extract dictionary values accounting for new v2 formats
+    education = resume_data.get('education') or []
+    cpi = 0
+    branch = ''
+    if education and len(education) > 0:
+        cpi = education[0].get('gpa') or 0
+        branch = education[0].get('field') or ''
+        
+    skills = resume_data.get('skills') or []
+    
+    projects_list = resume_data.get('projects') or []
+    projects = len(projects_list)
+    proj_keywords = []
+    for p in projects_list:
+        proj_keywords.extend(p.get('technologies', []))
+        
+    contact = resume_data.get('contact') or {}
+    mobile = contact.get('phone') or ""
+    email = contact.get('email') or ""
+    
+    experience_list = resume_data.get('experience') or []
+    experience = 1 if len(experience_list) > 0 else 0
+    
+    core_skills = skills # Using all skills as core since v2 parses precisely
 
     transformed_resume_data = {
         'CPI': cpi,

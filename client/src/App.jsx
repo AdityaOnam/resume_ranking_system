@@ -1,25 +1,38 @@
 import React from 'react';
-import { BrowserRouter as Router, Route, Routes } from 'react-router-dom';
-import Header from './components/common/Header';
-import Footer from './components/common/Footer';
+import { BrowserRouter as Router, Route, Routes, useLocation } from 'react-router-dom';
+import { Sidebar, TopBar } from './components/common/Header';
 import Dashboard from './components/Dashboard/Dashboard';
-import AnalysisPage from './pages/AnalysisPage';
+import ATSDashboard from './pages/ATSDashboard';
 import CompaniesShowcase from './components/Company/CompaniesShowcase';
+
+// The ATS section uses the app shell (sidebar). Upload & Companies are
+// top-nav-only pages, matching the reference design.
+const Shell = () => {
+  const { pathname } = useLocation();
+  const showSidebar = pathname.startsWith('/ats');
+
+  return (
+    <div className="flex flex-col h-screen overflow-hidden bg-background">
+      <TopBar />
+      <div className="flex flex-1 min-h-0 overflow-hidden">
+        {showSidebar && <Sidebar />}
+        <main className="flex-1 min-w-0 flex flex-col overflow-hidden">
+          <Routes>
+            <Route path="/" element={<Dashboard />} />
+            <Route path="/upload" element={<Dashboard />} />
+            <Route path="/companies" element={<CompaniesShowcase />} />
+            <Route path="/ats" element={<ATSDashboard />} />
+          </Routes>
+        </main>
+      </div>
+    </div>
+  );
+};
 
 function App() {
   return (
     <Router>
-      <div className="flex flex-col min-h-screen bg-gray-50 dark:bg-black">
-        <Header />
-        <main className="flex-grow container mx-auto px-4 py-8">
-          <Routes>
-            <Route path="/" element={<Dashboard />} />
-            <Route path="/companies" element={<CompaniesShowcase />} />
-            <Route path="/analysis/:id" element={<AnalysisPage />} />
-          </Routes>
-        </main>
-        <Footer />
-      </div>
+      <Shell />
     </Router>
   );
 }

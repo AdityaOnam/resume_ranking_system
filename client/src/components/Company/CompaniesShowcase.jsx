@@ -1,365 +1,207 @@
-import  { useEffect, useState } from 'react';
-import { motion } from "framer-motion";
-import { Skeleton } from "../../components/ui/skeleton";
-import { FaBuilding, FaSearch} from 'react-icons/fa';
+import React, { useState, useEffect } from 'react';
 import { getCompanies } from '../../services/api';
+import AddCompanyModal from './AddCompanyModal';
 
-const CompaniesShowcase = ({ rankings }) => {
-  const [searchTerm, setSearchTerm] = useState('');
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState(null);
-  const [companiesData, setCompaniesData] = useState([]);
-  const [industryFilter, ] = useState('All');
-  const [sortBy, ] = useState('name');
+const LOGO_MAP = {
+  'microsoft': 'https://lh3.googleusercontent.com/aida-public/AB6AXuBlaf-dZJPUwIYoyQWl6pdQWvp9TOzVFM7fT88FqzRnnxKIGINB2SlvSRIjpA-bSG3car9Lw8Vf4IOohHaz1ExWNJjNgwxh9Q1AioxlV4nlb0cm-pJuLJemAJ8lUgZG3r4wPy_XYzOCqmQnWFWk0TvOKEI6fIjC-xCD-gSpQJxnvDsjQlVTuZVRACPJHqDJgzxkbvNE31-rvooK0_POUQ9M2HCkXZpk3gQ9Sbg4-dRzU-E25SdrHeoiwwvVnP8A7Bi_6sd0kY5A3eg',
+  'google': 'https://lh3.googleusercontent.com/aida-public/AB6AXuCw0dBIRsK7ViL6s2iZEFOsbXYGzmW6rClFviL0rTnl8fzdX9Jhgfahm5EN3dkPlxYDa93S6QfNvpDkiMRl3WPARsnEoRS0xcmsgMz5twDvCV971-LuW3oKncirPMiiJN7XYoMx3OcwfX165TE4RXmpgaLolKkgrYsD34CHhX_hgbcRvPM8YsD2-3AXx6a1EgYMP5XmJKVW_NV-VqCVTmUzpVCH7C91RhTmTorbLQYbfP4QGVX7JXnx0F4_Pi25ZxP2mqJksfuTIVg',
+  'amazon': 'https://lh3.googleusercontent.com/aida-public/AB6AXuBPtyNl26QTCa_eSwNJgk_F1d3O7uYOHZ0uUkBXaePy_1KOHxFZF0yJpVMr2SywPXLxv1AoQqZbSzrLmRvPZ7_psm_GVsGhu5MuU9WzFrea0romqkAFX0xbTJPF41du3xnJjNAAKWfhiX1TQWhNuXxWDC2dmmTwoLt4YrLLSCw7X83wU2knGv9h2DlP1_XPVY84WoD7BqoSZg0NaVLzz9QNd7tbkntyfYUdp_EzzJaqq30wSca5BFDDcDjXCeT7opOr0INUnnQM39g',
+  'adobe': 'https://lh3.googleusercontent.com/aida-public/AB6AXuCmZirKxBbN6Nwvm9Gm_1oJsV_g3qwyB1c2d-urZG5KhfHCb_axA7ZocBGwbQnMkkUWA1fXChrzfRPcX-NdvkRDBaCZYdCF-QGLTWIQhbnGwWTUvx8IDm8w-LY0230tFxg2IPfqehRhH69YQb154mi0zCGvy4S-SxH89SxNAjVEe3IeCBBzK4jqrV8bCCefXrG6ghHaQZADImgiL-5Pu-7HweJB_J7p74YR1Q0NAR0fz9xgtii7nQZLlTqzMxx1CvZ3vIdDUfTzrCI',
+  'flipkart': 'https://lh3.googleusercontent.com/aida-public/AB6AXuCazbWaHy2Q9vIdHM_LDFIvLhbBBBmopN_1sehAyRhtKEY1hGuovLH2HtaEJTKPsz5SShuX62ZkoZ8PyK97U9mxjWfQ9nnGNZT1EZiDH4qIJZXx8t5mFubfVOrs4ZyQyPBNLHI1BxBx3gno18BXyWdmWVIgwgs1rwlGvwGBo0pI0gDzwjcfQd9rjxOaEt6VdS7c62gDIrB0F1IgfurZxyA_wFWX2c5aV80J_N7GjoQItsm29M24pBRYtNdLpmwSdkYMrvQ4GcQtZmI',
+  'zomato': 'https://lh3.googleusercontent.com/aida-public/AB6AXuBJlhQMc0Vruyn9j5KEd7md-RuHf-ZJdWFmztXVvHAwWelM3RHvo0q0FvJVNue5utOuqC-1zrDvUHzf2rAMmeMDBa-ZxXLtg33rs5IgxvG4Kg9-5G2auBikkK8mtkPkJjd7TBPlpCO3dm63tWF9Iv_EKFDjQiC3zbr4yP5cPDd2W4c5JWTfvnsT6jIjwp73o08NVrtveRYlv0Zw3rteOJU670stzDPXAVX192yktp9uppPmnSCGuLOnpPP4RUDpbq0X34h2owV2myc',
+};
+
+const getCompanyLogo = (name) => {
+  if (!name) return null;
+  return LOGO_MAP[name.toLowerCase()] || null;
+};
+
+const CompanyCard = ({ company }) => {
+  const skills = Array.isArray(company.skillSet) ? company.skillSet : (Array.isArray(company.skills) ? company.skills : []);
+  const logo = getCompanyLogo(company.name);
+  const dsaRequired = company.dsaRequired;
+
+  const dsaYes = dsaRequired === true || dsaRequired === 'true' || dsaRequired === 1;
+
+  return (
+    <div className="card card-hover p-5 flex flex-col gap-4">
+      {/* Header */}
+      <div className="flex items-center gap-4">
+        <div className="w-12 h-12 rounded-lg bg-surface-container-highest flex items-center justify-center shrink-0 border border-outline-variant/40 overflow-hidden">
+          {logo
+            ? <img src={logo} alt={company.name} className="object-contain w-8 h-8" />
+            : <span className="text-xl font-bold text-primary">{(company.name || '?')[0].toUpperCase()}</span>
+          }
+        </div>
+        <div>
+          <h3 className="text-lg font-semibold text-on-surface leading-tight">{company.name}</h3>
+          {company.cpi && (
+            <p className="text-[13px] font-mono text-primary mt-0.5">Min GPA: {company.cpi}</p>
+          )}
+        </div>
+      </div>
+
+      {/* Skills */}
+      <div>
+        <p className="text-[11px] font-semibold uppercase tracking-wider text-on-surface-variant mb-2">Skills</p>
+        <div className="flex flex-wrap gap-1.5">
+          {skills.slice(0, 4).map((skill, i) => (
+            <span key={i} className="chip">{skill}</span>
+          ))}
+          {skills.length > 4 && <span className="chip">+{skills.length - 4}</span>}
+        </div>
+      </div>
+
+      {/* Footer */}
+      <div className="mt-auto pt-4 border-t border-outline-variant/60 flex flex-col gap-2">
+        {company.internshipRole && (
+          <div className="flex justify-between items-center text-sm">
+            <span className="text-on-surface-variant">Role</span>
+            <span className="text-on-surface font-medium">{company.internshipRole}</span>
+          </div>
+        )}
+        <div className="flex justify-between items-center text-sm">
+          <span className="text-on-surface-variant">DSA Required</span>
+          <span
+            className="px-2 py-0.5 rounded text-[11px] font-bold border"
+            style={
+              dsaYes
+                ? { background: 'rgba(34,197,94,0.1)', color: '#4ade80', borderColor: 'rgba(34,197,94,0.3)' }
+                : { background: 'rgba(244,63,94,0.1)', color: '#fb7185', borderColor: 'rgba(244,63,94,0.3)' }
+            }
+          >
+            {dsaYes ? 'Yes' : 'No'}
+          </span>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const CompaniesShowcase = () => {
+  const [companies, setCompanies] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState('');
+  const [page, setPage] = useState(1);
+  const [showAddModal, setShowAddModal] = useState(false);
+  const PER_PAGE = 6;
+
+  const fetchCompanies = async () => {
+    setLoading(true);
+    try {
+      const res = await getCompanies();
+      setCompanies(Array.isArray(res.data) ? res.data : []);
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    const fetchCompanies = async () => {
-      try {
-        setIsLoading(true);
-        const response = await getCompanies();
-
-        const companiesArray = response.data.map((company, index) => ({
-          _id: company?._id || index.toString(),
-          companyId: company?._id,
-          name: company?.name,
-          cpi: company?.cpi,
-          skillSet: company?.skillSet,
-          internshipRole: company?.internshipRole,
-          visitsIITPatna: company?.visitsIITPatna,
-          minProjects: company?.minProjects,
-          projectKeywords: company?.projectKeywords,
-          branch: company?.branch,
-          dsaRequired: company?.dsaRequired,
-          coreSkills: company?.coreSkills,
-          industry: company?.industry || "Unknown"
-        }));
-
-        setCompaniesData(companiesArray);
-        setError(null);
-      } catch (err) {
-        console.error('Failed to fetch companies', err);
-        setError('Failed to load companies. Please try again later.');
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
     fetchCompanies();
   }, []);
 
-
-  // Filter and sort companies
-  const filteredCompanies = companiesData
-    .filter(company => {
-      if (typeof company.name === 'string') {
-        return company.name.toLowerCase().includes(searchTerm.toLowerCase()) &&
-          (industryFilter === 'All' || company.industry === industryFilter);
-      }
-      return false;
-    })
-    .sort((a, b) => {
-      if (sortBy === 'name') {
-        return a.name.localeCompare(b.name);
-      } else if (sortBy === 'industry') {
-        return a.industry.localeCompare(b.industry);
-      } else if (sortBy === 'compatibility') {
-        const aScore = calculateCompatibilityScore(a);
-        const bScore = calculateCompatibilityScore(b);
-        return bScore - aScore; // Higher score first
-      }
-      return 0;
-    });
-
-  const calculateCompatibilityScore = (company) => {
-    let score = 0;
-    if (company.cpi) {
-      score += (10 - company.cpi) * 10;
-    }
-
-    if (company.skillSet && company.skillSet.length) {
-      score += company.skillSet.length * 5;
-    }
-
-    return Math.min(Math.max(score, 0), 100);
-  };
-
-
-  // // console.log(companiesData)
-  // // Filter and sort companies
-  // const filteredCompanies = companiesData
-  // .filter(company => {
-  //   // Check if company.name exists and is a string
-  //   if (typeof company.name === 'string') {
-  //     return company.name.toLowerCase().includes(searchTerm.toLowerCase()) && 
-  //       (industryFilter === 'All' || company.industry === industryFilter);
-  //   }
-  //   return false; // Skip items without a valid name
-  // })
-  // .sort((a, b) => {
-  //   // Your existing sort logic
-  // });
-  // // console.log(filteredCompanies)
-
-
-  // const containerVariants = {
-  //   hidden: { opacity: 0 },
-  //   visible: { 
-  //     opacity: 1,
-  //     transition: { 
-  //       staggerChildren: 0.1
-  //     }
-  //   }
-  // };
-
-  // const itemVariants = {
-  //   hidden: { y: 20, opacity: 0 },
-  //   visible: { 
-  //     y: 0, 
-  //     opacity: 1,
-  //     transition: { type: "spring", stiffness: 100 }
-  //   },
-  //   hover: { 
-  //     scale: 1.03,
-  //     boxShadow: "0 10px 25px rgba(0, 0, 0, 0.1)",
-  //     transition: { type: "spring", stiffness: 400, damping: 10 }
-  //   }
-  // };
-
-  const containerVariants = {
-    hidden: { opacity: 0 },
-    visible: {
-      opacity: 1,
-      transition: {
-        staggerChildren: 0.1
-      }
-    }
-  };
-
-  const itemVariants = {
-    hidden: { y: 20, opacity: 0 },
-    visible: {
-      y: 0,
-      opacity: 1,
-      transition: { type: "spring", stiffness: 100 }
-    },
-    hover: {
-      scale: 1.03,
-      boxShadow: "0 10px 25px rgba(0, 0, 0, 0.1)",
-      transition: { type: "spring", stiffness: 400, damping: 10 }
-    }
-  };
+  const filtered = companies.filter(c =>
+    (c.name || '').toLowerCase().includes(search.toLowerCase())
+  );
+  const totalPages = Math.ceil(filtered.length / PER_PAGE);
+  const paged = filtered.slice((page - 1) * PER_PAGE, page * PER_PAGE);
 
   return (
-    <motion.section
-      initial={{ opacity: 0, y: 20 }}
-      whileInView={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.5 }}
-      viewport={{ once: true }}
-      className="bg-gradient-to-r from-indigo-50 to-purple-50 dark:from-gray-900 dark:to-indigo-950 rounded-2xl shadow-xl overflow-hidden my-12 p-8"
-    >
-      <div className="text-center mb-12">
-        <motion.h2
-          initial={{ opacity: 0, y: -20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5 }}
-          className="text-3xl font-bold text-gray-900 dark:text-white mb-4"
-        >
-          Company Compatibility Analysis
-        </motion.h2>
-        <motion.p
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ duration: 0.5, delay: 0.2 }}
-          className="text-gray-600 dark:text-gray-300 max-w-3xl mx-auto"
-        >
-          Explore how well your skills match with requirements from top companies across various industries.
-        </motion.p>
+    <div className="flex-1 overflow-y-auto px-6 md:px-8 py-8">
+      <div className="max-w-6xl mx-auto space-y-6">
+        {/* Header */}
+        <div>
+          <h2 className="text-2xl font-bold text-on-surface tracking-tight font-display">Companies</h2>
+          <p className="text-sm text-on-surface-variant mt-1">Browse hiring partners and their requirements</p>
+        </div>
+
+        {/* Search */}
+        <div className="flex flex-col sm:flex-row gap-3">
+          <div className="relative flex-1">
+            <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-on-surface-variant text-[20px]">search</span>
+            <input
+              className="w-full bg-surface-container-high border border-outline-variant rounded-lg py-3 pl-12 pr-4 text-sm text-on-surface placeholder:text-on-surface-variant focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-colors"
+              placeholder="Search companies..."
+              value={search}
+              onChange={e => { setSearch(e.target.value); setPage(1); }}
+            />
+          </div>
+          <button className="flex items-center gap-2 border border-outline-variant rounded-lg px-6 py-3 text-on-surface hover:border-primary hover:text-primary transition-colors text-sm shrink-0"
+            style={{ background: '#2A2E50' }}>
+            <span className="material-symbols-outlined text-[18px]">filter_list</span>
+            Filters
+          </button>
+          <button 
+            onClick={() => setShowAddModal(true)}
+            className="flex items-center gap-2 rounded-lg px-6 py-3 text-white transition-all text-sm shrink-0 font-medium btn-primary">
+            <span className="material-symbols-outlined text-[18px]">add</span>
+            Add Company / JD
+          </button>
+        </div>
+
+        {/* Grid */}
+        {loading ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+            {Array.from({ length: 6 }).map((_, i) => (
+              <div key={i} className="card h-48 animate-pulse" />
+            ))}
+          </div>
+        ) : paged.length === 0 ? (
+          <div className="text-center py-16 text-on-surface-variant">
+            <span className="material-symbols-outlined text-[48px] block mb-3 text-outline">business_center</span>
+            {search ? 'No companies match your search.' : 'No companies found. Add some companies first!'}
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+            {paged.map((company, i) => (
+              <CompanyCard key={company._id || i} company={company} />
+            ))}
+          </div>
+        )}
+
+        {/* Pagination */}
+        {totalPages > 1 && (
+          <div className="flex justify-between items-center pt-4 border-t border-outline-variant/60">
+            <span className="text-sm text-on-surface-variant">
+              Showing {(page - 1) * PER_PAGE + 1} to {Math.min(page * PER_PAGE, filtered.length)} of {filtered.length} companies
+            </span>
+            <div className="flex gap-1.5">
+              <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1}
+                className="w-8 h-8 rounded-lg flex items-center justify-center bg-surface-container-high border border-outline-variant/40 text-on-surface-variant hover:text-on-surface disabled:opacity-40 transition-colors">
+                <span className="material-symbols-outlined text-[16px]">chevron_left</span>
+              </button>
+              {Array.from({ length: Math.min(totalPages, 5) }, (_, i) => i + 1).map(p => (
+                <button key={p} onClick={() => setPage(p)}
+                  className={`w-8 h-8 rounded-lg flex items-center justify-center text-xs font-bold font-mono transition-colors border ${
+                    page === p
+                      ? 'bg-primary text-white border-primary'
+                      : 'bg-surface-container-high text-on-surface-variant border-outline-variant/40 hover:text-on-surface'
+                  }`}>
+                  {p}
+                </button>
+              ))}
+              <button onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page === totalPages}
+                className="w-8 h-8 rounded-lg flex items-center justify-center bg-surface-container-high border border-outline-variant/40 text-on-surface-variant hover:text-on-surface disabled:opacity-40 transition-colors">
+                <span className="material-symbols-outlined text-[16px]">chevron_right</span>
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
-      {/* Search and Filter Controls */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5, delay: 0.3 }}
-        className="flex flex-col md:flex-row gap-4 mb-8"
-      >
-        {/* Search input */}
-        <div className="relative flex-1">
-          <FaSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
-          <input
-            type="text"
-            placeholder="Search companies..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full pl-10 pr-4 py-2 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-          />
-        </div>
-
-        {/* Filters */}
-        {/* <div className="flex gap-4">
-          <div className="relative">
-            <FaFilter className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
-            <select
-              value={industryFilter}
-              onChange={(e) => setIndustryFilter(e.target.value)}
-              className="pl-10 pr-4 py-2 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-            >
-              {industries.map((industry, index) => (
-                <option key={index} value={industry}>{industry}</option>
-              ))}
-            </select>
-          </div>
-
-          <select
-            value={sortBy}
-            onChange={(e) => setSortBy(e.target.value)}
-            className="px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-          >
-            <option value="compatibility">Sort by Compatibility</option>
-            <option value="name">Sort by Name</option>
-            <option value="industry">Sort by Industry</option>
-          </select>
-        </div> */}
-      </motion.div>
-
-      {/* Companies Grid */}
-      {isLoading ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {[...Array(6)].map((_, index) => (
-            <div key={index} className="bg-white dark:bg-gray-800 rounded-xl p-6 h-48">
-              <Skeleton className="h-8 w-3/4 mb-4" />
-              <Skeleton className="h-4 w-1/2 mb-2" />
-              <Skeleton className="h-4 w-full mb-4" />
-              <Skeleton className="h-6 w-full" />
-            </div>
-          ))}
-        </div>
-      ) : error ? (
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          className="text-center py-12"
-        >
-          <p className="text-red-600 dark:text-red-400">{error}</p>
-        </motion.div>
-      ) : (
-        <motion.div
-          variants={containerVariants}
-          initial="hidden"
-          animate="visible"
-          className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
-        >
-          {filteredCompanies.map((company) => (
-            <motion.div
-              key={company._id}
-              variants={itemVariants}
-              whileHover="hover"
-              className="bg-white dark:bg-gray-800 rounded-xl shadow-md overflow-hidden"
-            >
-              <div className="p-6">
-                <div className="flex items-start justify-between mb-4">
-                  <div className="flex items-center">
-                    <div className="bg-indigo-100 dark:bg-indigo-900 p-3 rounded-lg mr-4">
-                      <FaBuilding className="text-indigo-600 dark:text-indigo-400 text-xl" />
-                    </div>
-                    <div>
-                      <h3 className="text-lg font-bold text-gray-900 dark:text-white">{company.name}</h3>
-                      {/* <p className="text-sm text-indigo-600 dark:text-indigo-400">{company.industry || 'Industry not specified'}</p> */}
-                    </div>
-                  </div>
-                </div>
-
-                <div className="mb-4">
-                  <p className="text-sm font-medium text-gray-700 dark:text-gray-300">Visits IIt Patna: {company.visitsIITPatna ? "Yes" : "No"}</p>
-                </div>
-                {/* CPI Requirement */}
-                {company.cpi && (
-                  <div className="mb-4">
-                    <p className="text-sm font-medium text-gray-700 dark:text-gray-300">CPI Requirement: {company.cpi}</p>
-                  </div>
-                )}
-
-                {/* Compatibility Score */}
-                <div className="mb-4">
-                  <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">Compatibility Score</p>
-                  <div className="flex items-center">
-                    <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2.5 mr-2">
-                      <div
-                        className="bg-gradient-to-r from-indigo-500 to-purple-600 h-2.5 rounded-full"
-                        style={{ width: `${calculateCompatibilityScore(company)}%` }}
-                      ></div>
-                    </div>
-                    <span className="text-sm font-medium text-gray-700 dark:text-gray-300 min-w-[45px] text-right">
-                      {calculateCompatibilityScore(company).toFixed(1)}%
-                    </span>
-                  </div>
-                </div>
-
-                {/* Skills */}
-                {company.skillSet && company.skillSet.length > 0 && (
-                  <div>
-                    <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Required Skills:</p>
-                    <div className="flex flex-wrap gap-2 mt-2">
-                      {company.skillSet.slice(0, 3).map((skill, skillIndex) => (
-                        <span
-                          key={skillIndex}
-                          className="px-2 py-1 text-xs bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-full"
-                        >
-                          {skill}
-                        </span>
-                      ))}
-                      {company.skillSet.length > 3 && (
-                        <span className="px-2 py-1 text-xs bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-full">
-                          +{company.skillSet.length - 3} more
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                )}
-
-                {/* Additional Information */}
-                <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
-                  <div className="grid grid-cols-2 gap-2">
-                    {company.internshipRole && (
-                      <p className="text-xs text-gray-600 dark:text-gray-400">
-                        <span className="font-medium">Role:</span> {company.internshipRole}
-                      </p>
-                    )}
-                    {company.branch && (
-                      <p className="text-xs text-gray-600 dark:text-gray-400">
-                        <span className="font-medium">Branch:</span> {company.branch}
-                      </p>
-                    )}
-                    {company.minProjects !== undefined && (
-                      <p className="text-xs text-gray-600 dark:text-gray-400">
-                        <span className="font-medium">Min Projects:</span> {company.minProjects}
-                      </p>
-                    )}
-                    {company.dsaRequired !== undefined && (
-                      <p className="text-xs text-gray-600 dark:text-gray-400">
-                        <span className="font-medium">DSA Required:</span> {company.dsaRequired ? 'Yes' : 'No'}
-                      </p>
-                    )}
-                  </div>
-                </div>
-              </div>
-            </motion.div>
-          ))}
-        </motion.div>
+      {showAddModal && (
+        <AddCompanyModal 
+          onClose={() => setShowAddModal(false)} 
+          onSaved={() => {
+            setShowAddModal(false);
+            fetchCompanies();
+          }} 
+        />
       )}
-
-      {!isLoading && !error && filteredCompanies.length === 0 && (
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          className="text-center py-12"
-        >
-          <p className="text-gray-600 dark:text-gray-400">No companies match your search criteria.</p>
-        </motion.div>
-      )}
-    </motion.section>
+    </div>
   );
-
-}
+};
 
 export default CompaniesShowcase;

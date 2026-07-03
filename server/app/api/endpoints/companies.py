@@ -3,8 +3,28 @@ from typing import List
 from app.models.company import CompanyCreate, CompanyUpdate, CompanyInDB
 from app.core.database import supabase
 from app.services.rank_service import generate_rankings
+from app.services.llm_service import LLMService
+from pydantic import BaseModel
+
+class JDParseRequest(BaseModel):
+    text: str
+
+llm_service = LLMService()
 
 router = APIRouter()
+
+@router.post("/parse-jd")
+def parse_job_description(req: JDParseRequest):
+    if not req.text or not req.text.strip():
+        raise HTTPException(status_code=400, detail="Job description text is required")
+        
+    try:
+        parsed_data = llm_service.extract_job_description_data(req.text)
+        if not parsed_data:
+            raise HTTPException(status_code=500, detail="Failed to parse job description")
+        return parsed_data
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 @router.post("/", response_model=CompanyInDB, status_code=201)
 def create_company(company: CompanyCreate):

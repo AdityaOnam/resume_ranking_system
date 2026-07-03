@@ -7,12 +7,14 @@ import datetime
 import traceback
 from app.models.resume import ResumeCreate, ResumeInDB, RankingScoreSchema
 from app.core.database import supabase
-from app.services.resume_parser import EnhancedResumeParser
+from app.services.resume_parser import ResumeParser
 from app.services.rank_service import generate_rankings
+from app.services.embedding_engine import EmbeddingEngine
 import asyncio
 
 router = APIRouter()
-parser = EnhancedResumeParser()
+parser = ResumeParser()
+embedding_engine = EmbeddingEngine()
 
 def format_education(parsed_resume):
     branch = parsed_resume.get("Branch")
@@ -110,58 +112,55 @@ async def upload_resume(resume: UploadFile = File(...)):
         with open(file_path, "wb") as buffer:
             shutil.copyfileobj(resume.file, buffer)
             
-        # Parse resume native python
+        # Parse resume natively
         try:
-            resume_text = parser.extract_text_from_pdf(file_path)
-            parsed_resume_data = {
-                "Email_ID": parser.extract_email(resume_text),
-                "Mobile_Number": parser.extract_mobile_number(resume_text),
-                "CPI/GPA": parser.extract_gpa(resume_text),
-                "Branch": parser.extract_branch(resume_text),
-                "Skills": parser.extract_skills(resume_text),
-                "No_of_Projects": parser.count_projects(resume_text),
-                "Project_Keywords": parser.extract_project_keywords(resume_text),
-                "Experience": parser.has_experience(resume_text),
-                "resumeText": resume_text
-            }
+            result = parser.parse(file_path)
+            parsed_resume_data = result.get("parsed_data", {})
+            resume_text = result.get("raw_text", "")
+            contact_info = parsed_resume_data.get("contact", {})
         except Exception as e:
             traceback.print_exc()
             raise HTTPException(status_code=500, detail=f"Failed to parse resume: {e}")
             
-        if not parsed_resume_data.get("Email_ID"):
+        if not contact_info.get("email"):
             if os.path.exists(file_path): os.unlink(file_path)
             raise HTTPException(status_code=400, detail="Failed to extract email from resume")
 
         # Fetch companies
         companies_res = supabase.table("companies").select("*").execute()
         companies = companies_res.data
-        if not companies:
-            if os.path.exists(file_path): os.unlink(file_path)
-            raise HTTPException(status_code=404, detail="No companies found in the database")
-
-        # Generate rankings natively!
-        rankings = await generate_rankings(parsed_resume_data, companies)
+        
+        rankings = []
+        if companies:
+            # Generate rankings natively against existing companies!
+            try:
+                rankings = await generate_rankings(parsed_resume_data, companies)
+            except Exception as e:
+                print(f"Warning: Failed to generate rankings: {e}")
 
         name_from_file = os.path.splitext(resume.filename)[0].replace("_", " ").replace("-", " ")
+        name_from_parser = contact_info.get("name")
+        final_name = name_from_parser if name_from_parser else name_from_file
 
         mapped_resume = {
-            "name": name_from_file,
-            "email": parsed_resume_data["Email_ID"],
-            "phone": parsed_resume_data["Mobile_Number"] or "",
-            "education": format_education(parsed_resume_data),
-            "skills": parsed_resume_data["Skills"] or [],
-            "experience": [{
-                "title": "Experience",
-                "company": "Unknown",
-                "description": "Experience mentioned",
-                "start_date": str(datetime.datetime.now()),
-                "end_date": str(datetime.datetime.now())
-            }] if parsed_resume_data["Experience"] == 'Yes' else [],
-            "projects": format_projects(parsed_resume_data),
+            "name": final_name,
+            "email": contact_info.get("email"),
+            "phone": contact_info.get("phone") or "",
+            "education": parsed_resume_data.get("education", []),
+            "skills": parsed_resume_data.get("skills", []),
+            "experience": parsed_resume_data.get("experience", []),
+            "projects": parsed_resume_data.get("projects", []),
             "resume_text": resume_text,
             "file_path": file_path,
             "rankings": rankings
         }
+
+        # Generate and attach semantic embeddings
+        try:
+            mapped_resume["embedding"] = embedding_engine.generate_resume_embedding(mapped_resume)
+        except Exception as e:
+            traceback.print_exc()
+            print(f"Warning: Failed to generate embedding: {e}")
 
         # Check existing
         existing = supabase.table("resumes").select("id, file_path").eq("email", mapped_resume["email"]).execute()

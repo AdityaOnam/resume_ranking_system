@@ -1,73 +1,66 @@
 /** @type {import('tailwindcss').Config} */
-export const content = [
-  "./src/**/*.{js,jsx,ts,tsx}",
-  "./public/index.html"
-];
-export const darkMode = 'class';
-export const theme = {
-  extend: {
-    animation: {
-      'fade-in': 'fadeIn 0.5s ease-out forwards',
-      'fade-in-up': 'fadeInUp 0.7s ease-out forwards',
-      'fade-in-down': 'fadeInDown 0.7s ease-out forwards',
-      'fade-in-left': 'fadeInLeft 0.7s ease-out forwards',
-      'fade-in-right': 'fadeInRight 0.7s ease-out forwards',
-      'slide-right': 'slideRight 0.5s ease-out forwards',
-      'slide-left': 'slideLeft 0.5s ease-out forwards',
-      'pulse-slow': 'pulse 3s infinite',
+module.exports = {
+  content: ["./src/**/*.{js,jsx,ts,tsx}", "./public/index.html"],
+  darkMode: "class",
+  theme: {
+    extend: {
+      colors: {
+        "primary": "#6c63ff",
+        "primary-fixed-dim": "#a29bff",
+        "on-primary-fixed": "#1a164c",
+        "outline": "#4a4d66",
+        "surface-bright": "#222543",
+        "background": "#0F1023",
+        "secondary": "#22c55e",
+        "tertiary-container": "#4a3c8c",
+        "surface-dim": "#0a0b1a",
+        "surface-container-low": "#171933",
+        "primary-fixed": "#c7c3ff",
+        "on-primary-fixed-variant": "#3f36a8",
+        "on-tertiary-container": "#e1d8ff",
+        "surface-variant": "#222543",
+        "surface-tint": "#6c63ff",
+        "surface-container-highest": "#2a2d52",
+        "on-background": "#e2e4f0",
+        "on-tertiary": "#ffffff",
+        "tertiary": "#b4a3ff",
+        "error": "#ffb4ab",
+        "surface-container-high": "#1f2240",
+        "surface": "#1A1D3A",
+        "on-primary-container": "#ffffff",
+        "on-surface-variant": "#a3a6c4",
+        "surface-container": "#1A1D3A",
+        "primary-container": "#554be6",
+        "on-primary": "#ffffff",
+        "on-surface": "#f1f3fa",
+        "outline-variant": "#343753",
+        "success": "#10B981",
+        "success-container": "rgba(16, 185, 129, 0.15)",
+      },
+      fontFamily: {
+        sans: ["Geist", "sans-serif"],
+        mono: ["Geist", "monospace"],
+        display: ["Hanken Grotesk", "sans-serif"],
+      },
+      borderRadius: {
+        DEFAULT: "0.375rem",
+        md: "0.5rem",
+        lg: "1rem",
+        xl: "1.5rem",
+        full: "9999px",
+      },
+      animation: {
+        'fade-in': 'fadeIn 0.5s ease-out forwards',
+        'fade-in-up': 'fadeInUp 0.7s ease-out forwards',
+        'slide-in-right': 'slideInRight 0.3s ease-out forwards',
+        'pulse-slow': 'pulse 3s infinite',
+      },
+      keyframes: {
+        fadeIn: { '0%': { opacity: '0' }, '100%': { opacity: '1' } },
+        fadeInUp: { '0%': { opacity: '0', transform: 'translateY(20px)' }, '100%': { opacity: '1', transform: 'translateY(0)' } },
+        slideInRight: { '0%': { transform: 'translateX(100%)' }, '100%': { transform: 'translateX(0)' } },
+      },
     },
-    keyframes: {
-      fadeIn: {
-        '0%': { opacity: '0' },
-        '100%': { opacity: '1' },
-      },
-      fadeInUp: {
-        '0%': { opacity: '0', transform: 'translateY(20px)' },
-        '100%': { opacity: '1', transform: 'translateY(0)' },
-      },
-      fadeInDown: {
-        '0%': { opacity: '0', transform: 'translateY(-20px)' },
-        '100%': { opacity: '1', transform: 'translateY(0)' },
-      },
-      fadeInLeft: {
-        '0%': { opacity: '0', transform: 'translateX(-20px)' },
-        '100%': { opacity: '1', transform: 'translateX(0)' },
-      },
-      fadeInRight: {
-        '0%': { opacity: '0', transform: 'translateX(20px)' },
-        '100%': { opacity: '1', transform: 'translateX(0)' },
-      },
-      slideRight: {
-        '0%': { transform: 'translateX(-100%)' },
-        '100%': { transform: 'translateX(0)' },
-      },
-      slideLeft: {
-        '0%': { transform: 'translateX(100%)' },
-        '100%': { transform: 'translateX(0)' },
-      },
-    },
-
-    transitionDelay: {
-      '100': '100ms',
-      '200': '200ms',
-      '300': '300ms',
-    },
-    variants: {
-      extend: {
-        scale: ['hover', 'focus'],
-        transform: ['hover', 'focus'],
-      },
-    },
-    colors: {
-      kinsta: {
-        bg: '#0E0A1B',
-        purple: '#5333EC',
-        teal: '#32D3D8',
-      }
-    },
-    backgroundImage: {
-      'gradient-kinsta': 'linear-gradient(135deg, #0E0A1B 0%, #1E0A3B 100%)',
-    }
   },
+  plugins: [],
 };
-export const plugins = [];
