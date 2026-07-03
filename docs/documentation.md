@@ -73,3 +73,8 @@ The backend runs on `http://127.0.0.1:5000`.
 
 Ensure the `server/.env` file is configured with your `SUPABASE_URL` and `SUPABASE_SERVICE_KEY`.
 
+---
+
+## Contributing and Workflow
+
+For details on the professional Git workflow (Fork & Pull, Rebasing) used in this project, please refer to the [Git Collaboration Workflow](./git_workflow.md).
