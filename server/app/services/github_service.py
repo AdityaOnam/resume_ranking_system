@@ -82,7 +82,7 @@ class GitHubService:
         if self.token:
             self.headers["Authorization"] = f"token {self.token}"
 
-    def extract_github_data(self, github_url: str, resume_projects: List[Dict[str, Any]]) -> Dict[str, Any]:
+    def extract_github_data(self, github_url: str, resume_projects: List[Dict[str, Any]], embedded_links: List[str] = None) -> Dict[str, Any]:
         """
         Main entry point for GitHub extraction.
         Takes the user's GitHub URL and the projects extracted from the resume.
@@ -104,7 +104,7 @@ class GitHubService:
 
         # 4. Extract skills from READMEs of matching projects
         project_titles = [p.get("title", "") for p in resume_projects if p.get("title")]
-        readme_skills = self._extract_skills_from_matched_readmes(username, repos, project_titles)
+        readme_skills = self._extract_skills_from_matched_readmes(username, repos, project_titles, embedded_links or [])
 
         return {
             "username": username,
@@ -186,11 +186,22 @@ class GitHubService:
             
         return sorted(stats, key=lambda x: x["percentage"], reverse=True)
 
-    def _extract_skills_from_matched_readmes(self, username: str, repos: List[Dict], resume_projects: List[str]) -> Set[str]:
+    def _extract_skills_from_matched_readmes(self, username: str, repos: List[Dict], resume_projects: List[str], embedded_links: List[str]) -> Set[str]:
         readme_skills = set()
         matched_repos = []
         repo_names = [r.get("name", "") for r in repos]
         
+        # 1. Exact match from embedded links (icons/hyperlinks)
+        for link in embedded_links:
+            match = re.search(fr"github\.com/{username}/([a-zA-Z0-9_-]+)", link, re.IGNORECASE)
+            if match:
+                exact_repo = match.group(1)
+                for repo_name in repo_names:
+                    if repo_name.lower() == exact_repo.lower():
+                        matched_repos.append(repo_name)
+                        break
+        
+        # 2. Fuzzy match project names
         for proj_name in resume_projects:
             best_match = None
             best_dist = float("inf")

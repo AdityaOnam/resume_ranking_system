@@ -46,30 +46,26 @@ def create_company(company: CompanyCreate):
         
         # We need an async trigger or just run it synchronously like the JS did
         for raw_resume in resumes.data:
-            # Reconstruct resumeData from supabase DB model to what rank_generator expects
-            resume_data_passed = {
-                'CPI/GPA': raw_resume.get('education', [{'gpa': 0}])[0].get('gpa') if raw_resume.get('education') else 0,
-                'Skills': raw_resume.get('skills', []),
-                'No_of_Projects': len(raw_resume.get('projects', [])),
-                'Project_Keywords': [],  # Flattening from projects dict would go here
-                'Mobile_Number': raw_resume.get('phone', ''),
-                'Email_ID': raw_resume.get('email', ''),
-                'Experience': 'Yes' if len(raw_resume.get('experience', [])) > 0 else 'No',
-                'Core_Computer_Skills': '',
-                'Branch': raw_resume.get('education', [{'field': ''}])[0].get('field') if raw_resume.get('education') else ''
-            }
+            # We already have parsed_data in the DB model for new resumes
+            # Fallback to the raw resume if parsed_data is not strictly separated
+            resume_data_passed = raw_resume.get("parsed_data")
+            if not resume_data_passed:
+                resume_data_passed = raw_resume
+                
+            resume_text = raw_resume.get("resume_text", "")
             
-            # The JS code calls generateRankings for all companies or just the new one.
-            # Here it generated rankings for the *new company only* 
             import asyncio
-            rankings = asyncio.run(generate_rankings(resume_data_passed, [new_company]))
+            rankings = asyncio.run(generate_rankings(resume_data_passed, resume_text, [new_company]))
             
             if rankings:
                 existing_rankings = raw_resume.get('rankings') or []
                 existing_rankings.append({
                     'company': new_company['id'],
                     'score': rankings[0]['score'],
-                    'rank': len(existing_rankings) + 1 # rough mock
+                    'rank': len(existing_rankings) + 1,
+                    'eligible': rankings[0].get('eligible', True),
+                    'eligibility_reasons': rankings[0].get('eligibility_reasons', []),
+                    'score_breakdown': rankings[0].get('score_breakdown', {})
                 })
                 # Note: full ranking sort logic across all resumes handled in generate_rankings above
                 

@@ -1,4 +1,5 @@
 import logging
+import math
 from typing import List, Dict, Any
 from sentence_transformers import SentenceTransformer
 
@@ -59,6 +60,31 @@ class EmbeddingEngine:
         except Exception as e:
             logger.error(f"Error generating embedding: {e}")
             return [0.0] * 384
+
+    def compute_similarity(self, vec_a: List[float], vec_b: List[float]) -> float:
+        """
+        Computes cosine similarity between two vectors.
+        Returns a float between -1.0 and 1.0 (1.0 being perfectly identical).
+        """
+        if not vec_a or not vec_b or len(vec_a) != len(vec_b):
+            return 0.0
+
+        dot_product = sum(a * b for a, b in zip(vec_a, vec_b))
+        norm_a = math.sqrt(sum(a * a for a in vec_a))
+        norm_b = math.sqrt(sum(b * b for b in vec_b))
+
+        if norm_a == 0 or norm_b == 0:
+            return 0.0
+
+        return dot_product / (norm_a * norm_b)
+
+    def compute_skill_similarity(self, skill_a: str, skill_b: str) -> float:
+        """
+        Computes semantic similarity between two skill strings on the fly.
+        """
+        vec_a = self._embed_text(skill_a)
+        vec_b = self._embed_text(skill_b)
+        return self.compute_similarity(vec_a, vec_b)
 
     def _flatten_resume(self, parsed_data: Dict[str, Any]) -> str:
         """

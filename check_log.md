@@ -24,7 +24,7 @@
 
 # Phase 6: Company Matching
 - [ ] Matching Dashboard & APIs (Person 1)
-- [ ] Bi-Encoder & Cross-Encoder Logic (Person 2)
+- [x] Bi-Encoder & Cross-Encoder Logic (Person 2)
 
 # Phase 7: Recommendation Engine
 - [ ] Recommendation UI (Person 1)
@@ -32,11 +32,11 @@
 
 # Phase 8: Ranking System
 - [ ] Leaderboard UI (Person 1)
-- [ ] Candidate Ranking Algorithm (Person 2)
+- [x] Candidate Ranking Algorithm (Person 2)
 
 # Phase 9: AI Explanation
 - [ ] Display AI Results (Person 1)
-- [ ] Prompt Engineering & LLM (Person 2)
+- [x] Prompt Engineering & LLM (Person 2)
 
 # Phase 10: Testing & Deployment
 - [ ] Deployment (Person 1)

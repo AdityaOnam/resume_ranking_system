@@ -10,6 +10,7 @@ from app.core.database import supabase
 from app.services.resume_parser import ResumeParser
 from app.services.rank_service import generate_rankings
 from app.services.embedding_engine import EmbeddingEngine
+from app.services.ats_scorer import calculate_general_score
 import asyncio
 
 router = APIRouter()
@@ -134,13 +135,24 @@ async def upload_resume(resume: UploadFile = File(...)):
         if companies:
             # Generate rankings natively against existing companies!
             try:
-                rankings = await generate_rankings(parsed_resume_data, companies)
+                rankings = await generate_rankings(parsed_resume_data, resume_text, companies)
             except Exception as e:
                 print(f"Warning: Failed to generate rankings: {e}")
 
         name_from_file = os.path.splitext(resume.filename)[0].replace("_", " ").replace("-", " ")
         name_from_parser = contact_info.get("name")
         final_name = name_from_parser if name_from_parser else name_from_file
+
+        # Generate General ATS Score
+        try:
+            ats_result = calculate_general_score(parsed_resume_data, resume_text)
+            ats_score = ats_result["score"]
+            ats_feedback = ats_result["feedback"]
+        except Exception as e:
+            traceback.print_exc()
+            print(f"Warning: Failed to generate ATS score: {e}")
+            ats_score = 0
+            ats_feedback = []
 
         mapped_resume = {
             "name": final_name,
@@ -152,7 +164,9 @@ async def upload_resume(resume: UploadFile = File(...)):
             "projects": parsed_resume_data.get("projects", []),
             "resume_text": resume_text,
             "file_path": file_path,
-            "rankings": rankings
+            "rankings": rankings,
+            "ats_score": ats_score,
+            "ats_feedback": ats_feedback
         }
 
         # Generate and attach semantic embeddings
@@ -189,7 +203,9 @@ async def upload_resume(resume: UploadFile = File(...)):
                 "id": resume_id,
                 "name": mapped_resume["name"],
                 "email": mapped_resume["email"],
-                "rankings": rankings
+                "rankings": rankings,
+                "ats_score": ats_score,
+                "ats_feedback": ats_feedback
             }
         }
         

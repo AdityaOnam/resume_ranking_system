@@ -1,74 +1,40 @@
-from app.services.rank_generator import calculate_score
 from app.core.database import supabase
+from app.services.company_matcher import CompanyMatcher
 
-def generate_ranking_score(resume_data: dict, company_data: dict) -> float:
-    # resume_data is now parsed_data from v2 parser
-    
-    # Safely extract dictionary values accounting for new v2 formats
-    education = resume_data.get('education') or []
-    cpi = 0
-    branch = ''
-    if education and len(education) > 0:
-        cpi = education[0].get('gpa') or 0
-        branch = education[0].get('field') or ''
-        
-    skills = resume_data.get('skills') or []
-    
-    projects_list = resume_data.get('projects') or []
-    projects = len(projects_list)
-    proj_keywords = []
-    for p in projects_list:
-        proj_keywords.extend(p.get('technologies', []))
-        
-    contact = resume_data.get('contact') or {}
-    mobile = contact.get('phone') or ""
-    email = contact.get('email') or ""
-    
-    experience_list = resume_data.get('experience') or []
-    experience = 1 if len(experience_list) > 0 else 0
-    
-    core_skills = skills # Using all skills as core since v2 parses precisely
-
-    transformed_resume_data = {
-        'CPI': cpi,
-        'Skill_Set': list(set(skills)),
-        'Projects': projects,
-        'Project_Keywords': list(set(proj_keywords)),
-        'Mobile': mobile,
-        'Email': email,
-        'Experience': experience,
-        'Core_Skills': list(set(core_skills)),
-        'Branch': branch
-    }
-
-    transformed_company_data = {
-        'Company_Name': company_data.get('name'),
-        'CPI': company_data.get('cpi', 0),
-        'Skill_Set': company_data.get('skill_set', []),
-        'Min_Projects': company_data.get('min_projects', 0),
-        'Project_Keywords': company_data.get('project_keywords', []),
-        'Branch': company_data.get('branch', []),
-        'Core_Skills': company_data.get('core_skills', [])
-    }
-    
-    return calculate_score(transformed_resume_data, transformed_company_data)
-
-async def generate_rankings(resume_data: dict, companies: list) -> list:
+async def generate_rankings(parsed_resume_data: dict, resume_text: str, companies: list) -> list:
+    """
+    Evaluates a single newly uploaded resume against a list of companies.
+    Updates the global ranks of all resumes for each company.
+    """
     if not companies:
         raise ValueError('No companies provided for ranking')
 
+    matcher = CompanyMatcher()
     rankings = []
     
-    # Calculate score against all companies for the new resume
+    # 1. Calculate Score for this new resume against all companies
     new_resume_scores = []
     for company in companies:
         if not company.get('id'):
             continue
         try:
-            score = generate_ranking_score(resume_data, company)
+            # 1a. Hard Filter
+            eligibility = matcher.check_hard_filters(parsed_resume_data, company)
+            
+            # 1b. Soft Scoring (only if eligible, else 0)
+            score_data = {"score": 0, "breakdown": {}}
+            if eligibility["eligible"]:
+                jd_text = company.get("description", "")
+                if not jd_text:
+                    jd_text = f"Role: {company.get('internship_role', '')}. Skills required: {', '.join(company.get('skill_set', []))}."
+                score_data = matcher.compute_company_score(parsed_resume_data, company, resume_text, jd_text)
+                
             new_resume_scores.append({
                 'company': company,
-                'score': score
+                'score': score_data["score"],
+                'eligible': eligibility["eligible"],
+                'eligibility_reasons': eligibility["reasons"],
+                'breakdown': score_data["breakdown"]
             })
         except Exception as e:
             print(f"Error calculating score for company {company.get('name')}: {e}")
@@ -77,9 +43,7 @@ async def generate_rankings(resume_data: dict, companies: list) -> list:
     if not new_resume_scores:
         raise ValueError('Failed to calculate scores for any company')
 
-    company_ids = [c['company']['id'] for c in new_resume_scores]
-    
-    # Get all existing resumes with their rankings
+    # 2. Re-rank against all existing resumes in DB
     res = supabase.table('resumes').select('id, rankings').execute()
     existing_resumes = res.data
 
@@ -88,6 +52,7 @@ async def generate_rankings(resume_data: dict, companies: list) -> list:
         new_score = new_score_item['score']
         company_id = company['id']
 
+        # Collect scores of all EXISTING resumes for this specific company
         company_scores = []
         for resume in existing_resumes:
             r_rankings = resume.get('rankings') or []
@@ -98,12 +63,13 @@ async def generate_rankings(resume_data: dict, companies: list) -> list:
                     'score': ranking.get('score', 0)
                 })
 
-        # Add new resume to the comparison list
+        # Add the NEW resume to the comparison pool
         all_scores = [{'resume': None, 'score': new_score}] + company_scores
         
-        # Sort scores descending
+        # Sort descending by score
         all_scores.sort(key=lambda x: x['score'], reverse=True)
 
+        # Calculate new mathematical ranks (handling ties)
         current_rank = 1
         current_score = all_scores[0]['score'] if all_scores else 0
         skip_count = 0
@@ -117,6 +83,7 @@ async def generate_rankings(resume_data: dict, companies: list) -> list:
                 skip_count += 1 if idx > 0 else 0
             item['rank'] = current_rank
 
+        # Extract the NEW resume's rank to return to the frontend
         new_resume_ranking = next((s for s in all_scores if s['resume'] is None), None)
         if new_resume_ranking:
             rankings.append({
@@ -124,10 +91,13 @@ async def generate_rankings(resume_data: dict, companies: list) -> list:
                 'companyName': company.get('name'),
                 'score': new_resume_ranking['score'],
                 'rank': new_resume_ranking['rank'],
-                'totalResumes': len(all_scores)
+                'totalResumes': len(all_scores),
+                'eligible': new_score_item['eligible'],
+                'eligibility_reasons': new_score_item['eligibility_reasons'],
+                'score_breakdown': new_score_item['breakdown']
             })
 
-        # Update existing resumes with new ranks
+        # Update EXISTING resumes in Supabase with their potentially dropped rank
         for score_item in all_scores:
             if score_item['resume']:
                 r_id = score_item['resume']['id']
@@ -137,7 +107,10 @@ async def generate_rankings(resume_data: dict, companies: list) -> list:
                         r['score'] = score_item['score']
                         r['rank'] = score_item['rank']
                         r['totalResumes'] = len(all_scores)
-                # Note: Supabase bulk updates are tricky, individual update inside loop:
+                        # We don't overwrite their eligible status here as we didn't recompute it, 
+                        # we just adjusted their rank.
+                
+                # Execute individual update
                 supabase.table('resumes').update({'rankings': r_rankings}).eq('id', r_id).execute()
 
     return rankings

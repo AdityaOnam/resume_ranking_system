@@ -25,6 +25,17 @@ import spacy
 from app.services.github_service import GitHubService
 from app.services.llm_service import LLMService
 
+def bayesian_confidence_update(prior: float, source_reliability: float, agreement: bool) -> float:
+    """Update confidence using Bayes' Theorem."""
+    if agreement:
+        p_agree = (source_reliability * prior) + ((1.0 - source_reliability) * (1.0 - prior))
+        if p_agree == 0: return prior
+        return (source_reliability * prior) / p_agree
+    else:
+        p_disagree = ((1.0 - source_reliability) * prior) + (source_reliability * (1.0 - prior))
+        if p_disagree == 0: return prior
+        return ((1.0 - source_reliability) * prior) / p_disagree
+
 logger = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
@@ -208,7 +219,7 @@ class ResumeParser:
     {
         "contact": {"name", "email", "phone", "linkedin", "github"},
         "education": [{"institution", "degree", "field", "gpa", "start_year", "end_year"}],
-        "skills": ["Python", "React", ...],
+        "skills": [{"name", "confidence"}],
         "experience": [{"company", "role", "duration", "description"}],
         "projects": [{"title", "description", "technologies"}]
     }
@@ -237,8 +248,8 @@ class ResumeParser:
                 "parsed_data": {"error": "Could not extract meaningful text from file."},
             }
 
-        # Split into named sections
-        sections = self._split_into_sections(raw_text)
+        # Split into named sections (and record their order for ATS scoring)
+        sections, section_order = self._split_into_sections(raw_text)
 
         contact = self._extract_contact(raw_text, sections, embedded_links)
         education = self._extract_education(raw_text, sections)
@@ -246,48 +257,96 @@ class ResumeParser:
         experience = self._extract_experience(raw_text, sections)
         projects = self._extract_projects(raw_text, sections)
 
-        # 2. GitHub API Extraction
-        github_stats = None
+        # 2. LLM Structured Extraction (Full Profile)
+        logger.info("Triggering Llama 3.1 LLM extraction...")
+        llm_svc = LLMService()
+        llm_data = llm_svc.extract_resume_data(raw_text) or {}
+
+        # 3. Merging LLM and Heuristic data BEFORE GitHub
+        # Merge education: If LLM missed GPA but Regex found it, inject it.
+        final_education = llm_data.get("education") or education
+        if final_education and education:
+            # simple fallback: if the first LLM education entry has no GPA, but heuristic did, copy it over.
+            if not final_education[0].get("gpa") and education[0].get("gpa"):
+                final_education[0]["gpa"] = education[0]["gpa"]
+            if not final_education[0].get("start_year") and education[0].get("start_year"):
+                final_education[0]["start_year"] = education[0]["start_year"]
+            if not final_education[0].get("end_year") and education[0].get("end_year"):
+                final_education[0]["end_year"] = education[0]["end_year"]
+                
+        final_experience = llm_data.get("experience") or experience
+        # Prevent LLM from hallucinating an Experience section when there isn't one
+        if "experience" not in section_order:
+            final_experience = []
+            
+        final_projects = llm_data.get("projects") or projects
+        
+        # 4. Bayesian Skill Merging
+        skill_tracker = {} # canonical_name -> {"confidence": float, "sources": set()}
+        
+        # Source 1: Heuristics (Prior)
+        for s in skills:
+            skill_tracker[s.title()] = {"confidence": 0.75, "sources": {"Resume"}}
+            
+        # Source 2: LLM
+        llm_skills = llm_data.get("skills", [])
+        for s in [ls.title() for ls in llm_skills if isinstance(ls, str)]:
+            if s in skill_tracker:
+                # LLM agrees with Heuristics -> Bayesian Update
+                skill_tracker[s]["confidence"] = bayesian_confidence_update(skill_tracker[s]["confidence"], 0.85, True)
+                skill_tracker[s]["sources"].add("Resume")
+            else:
+                # New skill from LLM
+                skill_tracker[s] = {"confidence": 0.85, "sources": {"Resume"}}
+        
+        # 5. GitHub API Extraction (Fed by LLM's highly accurate project list)
         github_url = contact.get("github")
         if github_url:
             logger.info(f"GitHub URL found: {github_url}. Fetching data...")
             github_svc = GitHubService()
-            github_stats = github_svc.extract_github_data(github_url, projects)
-            # Merge new skills found in READMEs
+            github_stats = github_svc.extract_github_data(github_url, final_projects, embedded_links)
+            
             if not github_stats.get("error"):
-                readme_skills = github_stats.get("readme_skills", [])
-                skills = list(set(skills + readme_skills))
+                # Merge new skills found in READMEs
+                for s in github_stats.get("readme_skills", []):
+                    canonical = s.title()
+                    if canonical in skill_tracker:
+                        skill_tracker[canonical]["confidence"] = bayesian_confidence_update(skill_tracker[canonical]["confidence"], 0.70, True)
+                        skill_tracker[canonical]["sources"].add("GitHub (READMEs)")
+                    else:
+                        skill_tracker[canonical] = {"confidence": 0.70, "sources": {"GitHub (READMEs)"}}
+                        
+                # Merge explicitly mapped repository languages
+                for lang_stat in github_stats.get("language_stats", []):
+                    canonical = lang_stat.get("language", "").title()
+                    if not canonical: continue
+                    pct = lang_stat.get("percentage", 0.0)
+                    source_str = f"GitHub (Repo: {pct}%)"
+                    if canonical in skill_tracker:
+                        skill_tracker[canonical]["confidence"] = bayesian_confidence_update(skill_tracker[canonical]["confidence"], 0.90, True)
+                        skill_tracker[canonical]["sources"].add(source_str)
+                    else:
+                        skill_tracker[canonical] = {"confidence": 0.90, "sources": {source_str}}
 
-        # 3. LLM Structured Extraction (Fallback & Enrichment)
-        logger.info("Triggering Llama 3.1 LLM extraction...")
-        llm_svc = LLMService()
-        llm_data = llm_svc.extract_resume_data(raw_text)
+        # Sort skills by confidence
+        final_skills = [
+            {
+                "name": name, 
+                "confidence": round(data["confidence"], 4),
+                "sources": list(data["sources"])
+            } 
+            for name, data in sorted(skill_tracker.items(), key=lambda x: x[1]["confidence"], reverse=True)
+        ]
 
-        # 4. Merge results
-        if llm_data:
-            # LLM is better at structuring text but regex is safer for exact contacts
-            llm_skills = llm_data.get("skills", [])
-            merged_skills = list(set(skills + [s.title() for s in llm_skills if isinstance(s, str)]))
-
-            parsed_data = {
-                "contact": contact,  # Prefer heuristic for exact matching
-                "education": llm_data.get("education") or education,
-                "skills": sorted(merged_skills),
-                "experience": llm_data.get("experience") or experience,
-                "projects": llm_data.get("projects") or projects,
-            }
-        else:
-            parsed_data = {
-                "contact": contact,
-                "education": education,
-                "skills": sorted(skills),
-                "experience": experience,
-                "projects": projects,
-            }
-
-        # Attach github stats if available
-        if github_stats and not github_stats.get("error"):
-            parsed_data["github_stats"] = github_stats
+        # 6. Final Assembly
+        parsed_data = {
+            "contact": contact,
+            "education": final_education,
+            "skills": final_skills,
+            "experience": final_experience,
+            "projects": final_projects,
+            "section_order": section_order  # Used later for ATS scoring
+        }
 
         return {
             "raw_text": raw_text,
@@ -342,10 +401,10 @@ class ResumeParser:
     # Section Splitting (from eightfold approach)
     # ------------------------------------------------------------------
 
-    def _split_into_sections(self, text: str) -> Dict[str, str]:
+    def _split_into_sections(self, text: str) -> tuple[Dict[str, str], List[str]]:
         """
         Splits resume text into named sections by matching common header patterns.
-        Returns dict like {"skills": "...", "experience": "...", ...}
+        Returns (sections_dict, ordered_list_of_section_names)
         """
         lines = text.split("\n")
         boundaries: List[tuple] = []  # (line_index, section_name)
@@ -360,12 +419,17 @@ class ResumeParser:
                     break
 
         if not boundaries:
-            return {"unknown": text}
+            return {"unknown": text}, ["unknown"]
 
         boundaries.sort(key=lambda x: x[0])
-
+        
+        section_order = []
         sections: Dict[str, str] = {}
+        
         for idx, (start_line, section_name) in enumerate(boundaries):
+            if section_name not in section_order:
+                section_order.append(section_name)
+                
             end_line = boundaries[idx + 1][0] if idx + 1 < len(boundaries) else len(lines)
             section_text = "\n".join(lines[start_line + 1 : end_line])
             if section_name in sections:
@@ -373,7 +437,7 @@ class ResumeParser:
             else:
                 sections[section_name] = section_text
 
-        return sections
+        return sections, section_order
 
     # ------------------------------------------------------------------
     # Contact Extraction

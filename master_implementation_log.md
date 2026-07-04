@@ -37,3 +37,22 @@
     *   Configure the Supabase database with the `pgvector` extension.
     *   Ensure the vector column is configured to exactly **384 dimensions** (e.g., `embedding vector(384)`).
     *   Build the FastAPI endpoint that takes the final JSON and the 384D Vector and executes the SQL `INSERT` into Supabase.
+
+## 8. Company Matching & Cross-Encoder (Completed)
+*   **What was built:** Developed `services/company_matcher.py` that implements a two-stage matching pipeline:
+    *   **Hard Filters:** Strictly prunes candidates based on exact Branch/Degree matches and required DSA competencies.
+    *   **Soft Scoring:** Generates a 0-100 score by computing skill overlap (exact and semantic embedding matches), Cross-Encoder semantic similarity on project relevance versus JD responsibilities, and experience relevance.
+*   **Person 1 Corresponding Work:** 
+    *   Build a Match Dashboard UI where a recruiter can click "Match" on a Job Description and see ranked candidates.
+    *   Connect the UI to the backend scoring APIs.
+
+## 9. ATS Engine & Metrics Detection (Completed)
+*   **What was built:** Developed `services/ats_scorer.py` that calculates a deterministic ATS resume score (0-100) based on Contact Info presence, Formatting, Action Verbs, and Quantifiable Metrics (detecting exact numbers/percentages).
+*   **Person 1 Corresponding Work:** 
+    *   Display the ATS Score and the quantitative feedback cleanly in the frontend for the candidate to see.
+
+## 10. AI Gap Analysis & RAM Optimization (Completed)
+*   **What was built:** Upgraded `services/llm_service.py` to prevent hallucination through strict schema enforcement and implemented a qualitative "Gap Analysis" generator tailored to the specific JD.
+    *   Dynamically selects between `llama3.1:8b-instruct-q2_K` and `llama3.2:1b` using `psutil` based on the system's available RAM to prevent laptop crashes during heavy inference.
+*   **Person 1 Corresponding Work:** 
+    *   Create a UI modal or section to display the AI's personalized feedback and gap analysis to the candidate.
