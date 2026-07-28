@@ -184,14 +184,17 @@ class CompanyMatcher:
 
         # 2. Cross-Encoder Match (30 points)
         cross_encoder_score = 0.0
-        if not skip_cross_encoder and self._cross_encoder and resume_text and jd_text:
+        if not skip_cross_encoder and self._cross_encoder and jd_text:
             try:
-                # Returns a logits score. Apply sigmoid to get 0-1 range.
-                import math
-                # predict expects a list of pairs: [[text1, text2]]
-                logit = float(self._cross_encoder.predict([[jd_text, resume_text]])[0])
-                sigmoid = 1 / (1 + math.exp(-logit))
-                cross_encoder_score = sigmoid * 30.0
+                # The user astutely noted that raw_text lacks the GitHub stats and Bayesian logic.
+                # So we use the flattened parsed JSON instead of raw_text!
+                enriched_text = self._embedding_engine._flatten_resume(candidate_data)
+                if enriched_text:
+                    import math
+                    # predict expects a list of pairs: [[text1, text2]]
+                    logit = float(self._cross_encoder.predict([[jd_text, enriched_text]])[0])
+                    sigmoid = 1 / (1 + math.exp(-logit))
+                    cross_encoder_score = sigmoid * 30.0
             except Exception as e:
                 logger.error(f"Cross encoder error: {e}")
         
