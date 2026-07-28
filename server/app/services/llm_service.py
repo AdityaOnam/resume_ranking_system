@@ -1,29 +1,15 @@
 import json
 import logging
-from typing import Dict, Any, Optional
-import ollama
+from typing import Dict, Any, Optional, List
 from app.core.config import settings
 
 logger = logging.getLogger(__name__)
 
-class LLMService:
-    def __init__(self):
-        # Model name and Ollama host are configurable via .env
-        # (OLLAMA_MODEL_NAME / OLLAMA_HOST) so this works unmodified whether
-        # Ollama runs on localhost or a separate host/container.
-        self.model_name = settings.OLLAMA_MODEL_NAME
-        # timeout is forwarded straight through to the underlying httpx client -
-        # without it, a hung/overloaded Ollama daemon stalls the calling thread
-        # indefinitely (this only ever runs inside asyncio.to_thread, so it can't
-        # freeze the event loop, but it can still stall a single upload forever).
-        self._client = ollama.Client(host=settings.OLLAMA_HOST, timeout=settings.OLLAMA_TIMEOUT_SECONDS)
-        logger.info(f"Using Ollama model: {self.model_name} @ {settings.OLLAMA_HOST} (timeout={settings.OLLAMA_TIMEOUT_SECONDS}s)")
+# ---------------------------------------------------------------------------
+# Prompt templates (shared across both providers)
+# ---------------------------------------------------------------------------
 
-    def extract_resume_data(self, raw_text: str) -> Optional[Dict[str, Any]]:
-        """
-        Extracts structured JSON from raw resume text using Llama 3.1 via Ollama.
-        """
-        system_prompt = """You are an expert technical recruiter and data extractor. 
+_RESUME_SYSTEM_PROMPT = """You are an expert technical recruiter and data extractor. 
 Your task is to parse the following raw resume text and extract the data into a strictly structured JSON format.
 
 CRITICAL INSTRUCTIONS TO PREVENT HALLUCINATIONS:
@@ -73,33 +59,7 @@ The JSON MUST follow this exact schema:
 
 Respond ONLY with valid JSON. Do not include markdown formatting like ```json or any conversational text."""
 
-        try:
-            response = self._client.chat(
-                model=self.model_name,
-                messages=[
-                    {"role": "system", "content": system_prompt},
-                    {"role": "user", "content": raw_text}
-                ],
-                format='json',
-                options={
-                    "temperature": 0.1 # Keep it deterministic for extraction
-                }
-            )
-            
-            result_text = response['message']['content']
-            parsed_json = json.loads(result_text)
-            return parsed_json
-            
-        except Exception as e:
-            logger.error(f"Error communicating with Ollama or parsing JSON: {e}")
-            return None
-
-    def extract_job_description_data(self, raw_text: str) -> Optional[Dict[str, Any]]:
-        """
-        Extracts structured JSON from raw job description text using Llama 3.1.
-        Matches the CompanyBase schema.
-        """
-        system_prompt = """You are an expert technical recruiter. 
+_JD_SYSTEM_PROMPT = """You are an expert technical recruiter. 
 Your task is to parse the following Job Description (JD) text and extract the data into a strictly structured JSON format matching our company schema.
 If a piece of information is missing, use reasonable defaults like 0, false, or an empty list [].
 
@@ -120,33 +80,9 @@ The JSON MUST follow this exact schema:
 
 Respond ONLY with valid JSON. Do not include markdown formatting like ```json or any conversational text."""
 
-        try:
-            response = self._client.chat(
-                model=self.model_name,
-                messages=[
-                    {"role": "system", "content": system_prompt},
-                    {"role": "user", "content": raw_text}
-                ],
-                format='json',
-                options={
-                    "temperature": 0.1
-                }
-            )
-            
-            result_text = response['message']['content']
-            parsed_json = json.loads(result_text)
-            return parsed_json
-            
-        except Exception as e:
-            logger.error(f"Error communicating with Ollama or parsing JD JSON: {e}")
-            return None
 
-    def generate_gap_analysis(self, resume_text: str, jd_text: str, match_result: Dict[str, Any]) -> str:
-        """
-        Generates a qualitative, natural language gap analysis explaining why the candidate 
-        is or isn't a fit for the role, providing skill justification and improvement suggestions.
-        """
-        system_prompt = f"""You are an expert technical recruiter analyzing a candidate for a role.
+def _build_gap_analysis_system_prompt(match_result: Dict[str, Any]) -> str:
+    return f"""You are an expert technical recruiter analyzing a candidate for a role.
 You have been provided with the Job Description text, the Candidate's Resume text, and the mathematical match score calculated by our AI engine.
 
 Match Score Data:
@@ -159,29 +95,9 @@ Your task is to provide a concise, professional 'Gap Analysis' (2-3 paragraphs m
 
 Do NOT output Markdown headers or bullet lists unless absolutely necessary. Keep it as a readable, direct feedback paragraph to the candidate."""
 
-        try:
-            response = self._client.chat(
-                model=self.model_name,
-                messages=[
-                    {"role": "system", "content": system_prompt},
-                    {"role": "user", "content": f"JOB DESCRIPTION:\n{jd_text}\n\nRESUME:\n{resume_text}"}
-                ],
-                options={
-                    "temperature": 0.4
-                }
-            )
-            
-            return response['message']['content'].strip()
-            
-        except Exception as e:
-            logger.error(f"Error generating gap analysis with Ollama: {e}")
-            return "Unable to generate AI gap analysis at this time."
 
-    def generate_general_ats_feedback(self, resume_text: str, score_data: Dict[str, Any]) -> str:
-        """
-        Generates qualitative feedback for the general ATS score.
-        """
-        system_prompt = f"""You are an expert ATS (Applicant Tracking System) reviewer.
+def _build_ats_feedback_system_prompt(score_data: Dict[str, Any]) -> str:
+    return f"""You are an expert ATS (Applicant Tracking System) reviewer.
 You have been provided with the Candidate's Resume text and their computed ATS Score breakdown.
 
 ATS Score Breakdown:
@@ -196,20 +112,200 @@ Your task is to provide a concise, professional 'Resume Gap Analysis' (2-3 parag
 
 Do NOT output Markdown headers or bullet lists unless absolutely necessary. Keep it as a readable, direct feedback paragraph to the candidate."""
 
+
+# ===========================================================================
+# Ollama Backend
+# ===========================================================================
+
+class _OllamaBackend:
+    """Wraps the Ollama Python client. Used when LLM_PROVIDER=ollama."""
+
+    def __init__(self):
+        import ollama
+        self.model_name = settings.OLLAMA_MODEL_NAME
+        self._client = ollama.Client(
+            host=settings.OLLAMA_HOST,
+            timeout=settings.OLLAMA_TIMEOUT_SECONDS,
+        )
+        logger.info(
+            f"LLM Provider: Ollama | model={self.model_name} "
+            f"host={settings.OLLAMA_HOST} timeout={settings.OLLAMA_TIMEOUT_SECONDS}s"
+        )
+
+    def chat_json(self, system_prompt: str, user_content: str, temperature: float = 0.1) -> Optional[Dict[str, Any]]:
         try:
             response = self._client.chat(
                 model=self.model_name,
                 messages=[
                     {"role": "system", "content": system_prompt},
-                    {"role": "user", "content": f"RESUME TEXT:\n{resume_text}"}
+                    {"role": "user", "content": user_content},
                 ],
-                options={
-                    "temperature": 0.4
-                }
+                format="json",
+                options={"temperature": temperature},
             )
-            
-            return response['message']['content'].strip()
-            
+            return json.loads(response["message"]["content"])
         except Exception as e:
-            logger.error(f"Error generating general ATS feedback with Ollama: {e}")
-            return "Unable to generate general ATS feedback at this time."
+            logger.error(f"Ollama JSON chat failed: {e}")
+            return None
+
+    def chat_text(self, system_prompt: str, user_content: str, temperature: float = 0.4) -> str:
+        try:
+            response = self._client.chat(
+                model=self.model_name,
+                messages=[
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": user_content},
+                ],
+                options={"temperature": temperature},
+            )
+            return response["message"]["content"].strip()
+        except Exception as e:
+            logger.error(f"Ollama text chat failed: {e}")
+            return ""
+
+
+# ===========================================================================
+# Gemini Backend (with multi-key rotation)
+# ===========================================================================
+
+class _GeminiBackend:
+    """Wraps the Google GenAI SDK. Supports multiple API keys with automatic
+    rotation when a key hits its rate limit (HTTP 429)."""
+
+    def __init__(self):
+        from google import genai
+
+        raw_keys = settings.GEMINI_API_KEYS
+        self._keys: List[str] = [k.strip() for k in raw_keys.split(",") if k.strip()]
+        if not self._keys:
+            raise ValueError(
+                "LLM_PROVIDER is set to 'gemini' but GEMINI_API_KEYS is empty. "
+                "Provide at least one Gemini API key in your .env file."
+            )
+        self._genai_module = genai
+        self._model_name = settings.GEMINI_MODEL_NAME
+        self._timeout = settings.GEMINI_TIMEOUT_SECONDS
+        self._current_key_index = 0
+
+        # Pre-build one client per key so we can rotate instantly on 429
+        self._clients = [genai.Client(api_key=key) for key in self._keys]
+
+        logger.info(
+            f"LLM Provider: Gemini | model={self._model_name} "
+            f"keys={len(self._keys)} timeout={self._timeout}s"
+        )
+
+    def _rotate_key(self) -> bool:
+        """Advance to the next key. Returns False if all keys have been tried."""
+        self._current_key_index += 1
+        if self._current_key_index >= len(self._clients):
+            self._current_key_index = 0
+            return False
+        return True
+
+    def chat_json(self, system_prompt: str, user_content: str, temperature: float = 0.1) -> Optional[Dict[str, Any]]:
+        from google.genai import types
+
+        config = types.GenerateContentConfig(
+            system_instruction=system_prompt,
+            temperature=temperature,
+            response_mime_type="application/json",
+            http_options=types.HttpOptions(timeout=self._timeout * 1000),
+        )
+        return self._execute_with_rotation(user_content, config, parse_json=True)
+
+    def chat_text(self, system_prompt: str, user_content: str, temperature: float = 0.4) -> str:
+        from google.genai import types
+
+        config = types.GenerateContentConfig(
+            system_instruction=system_prompt,
+            temperature=temperature,
+            http_options=types.HttpOptions(timeout=self._timeout * 1000),
+        )
+        result = self._execute_with_rotation(user_content, config, parse_json=False)
+        return result if result else ""
+
+    def _execute_with_rotation(self, user_content: str, config, parse_json: bool):
+        """Try each API key in order. On rate-limit (429), rotate to the next."""
+        start_index = self._current_key_index
+        tried = 0
+
+        while tried < len(self._clients):
+            client = self._clients[self._current_key_index]
+            try:
+                response = client.models.generate_content(
+                    model=self._model_name,
+                    contents=user_content,
+                    config=config,
+                )
+                text = response.text
+                if parse_json:
+                    return json.loads(text)
+                return text.strip() if text else ""
+
+            except Exception as e:
+                error_str = str(e).lower()
+                is_rate_limit = "429" in error_str or "resource_exhausted" in error_str or "quota" in error_str
+
+                if is_rate_limit and self._rotate_key():
+                    key_num = self._current_key_index + 1
+                    logger.warning(f"Gemini key #{key_num - 1} rate-limited, rotating to key #{key_num}")
+                    tried += 1
+                    continue
+                else:
+                    logger.error(f"Gemini API call failed (key #{self._current_key_index + 1}): {type(e).__name__}")
+                    return None if parse_json else ""
+
+        # All keys exhausted
+        logger.error("All Gemini API keys exhausted (rate-limited).")
+        self._current_key_index = start_index
+        return None if parse_json else ""
+
+
+# ===========================================================================
+# Public LLMService — provider-agnostic facade
+# ===========================================================================
+
+class LLMService:
+    def __init__(self):
+        provider = settings.LLM_PROVIDER.lower().strip()
+        if provider == "gemini":
+            self._backend = _GeminiBackend()
+        elif provider == "ollama":
+            self._backend = _OllamaBackend()
+        else:
+            raise ValueError(
+                f"Unknown LLM_PROVIDER '{provider}'. Must be 'ollama' or 'gemini'."
+            )
+
+    def extract_resume_data(self, raw_text: str) -> Optional[Dict[str, Any]]:
+        """
+        Extracts structured JSON from raw resume text using the configured LLM provider.
+        """
+        return self._backend.chat_json(_RESUME_SYSTEM_PROMPT, raw_text, temperature=0.1)
+
+    def extract_job_description_data(self, raw_text: str) -> Optional[Dict[str, Any]]:
+        """
+        Extracts structured JSON from raw job description text.
+        Matches the CompanyBase schema.
+        """
+        return self._backend.chat_json(_JD_SYSTEM_PROMPT, raw_text, temperature=0.1)
+
+    def generate_gap_analysis(self, resume_text: str, jd_text: str, match_result: Dict[str, Any]) -> str:
+        """
+        Generates a qualitative, natural language gap analysis explaining why the candidate 
+        is or isn't a fit for the role, providing skill justification and improvement suggestions.
+        """
+        system_prompt = _build_gap_analysis_system_prompt(match_result)
+        user_content = f"JOB DESCRIPTION:\n{jd_text}\n\nRESUME:\n{resume_text}"
+        result = self._backend.chat_text(system_prompt, user_content, temperature=0.4)
+        return result if result else "Unable to generate AI gap analysis at this time."
+
+    def generate_general_ats_feedback(self, resume_text: str, score_data: Dict[str, Any]) -> str:
+        """
+        Generates qualitative feedback for the general ATS score.
+        """
+        system_prompt = _build_ats_feedback_system_prompt(score_data)
+        user_content = f"RESUME TEXT:\n{resume_text}"
+        result = self._backend.chat_text(system_prompt, user_content, temperature=0.4)
+        return result if result else "Unable to generate general ATS feedback at this time."

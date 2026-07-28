@@ -22,11 +22,6 @@ if ENVIRONMENT == "production":
     # e.g. FRONTEND_ORIGINS="https://app.example.com,https://www.example.com"
     origins_env = os.getenv("FRONTEND_ORIGINS", "")
     allowed_origins = [origin.strip() for origin in origins_env.split(",") if origin.strip()]
-    if not allowed_origins:
-        raise RuntimeError(
-            "FRONTEND_ORIGINS environment variable must be set with a comma-separated "
-            "list of allowed origins when ENVIRONMENT=production."
-        )
 else:
     # In development, allow local frontend origins explicitly
     allowed_origins = [
@@ -39,6 +34,7 @@ else:
 app.add_middleware(
     CORSMiddleware,
     allow_origins=allowed_origins,
+    allow_origin_regex=r"https://.*\.(vercel\.app|hf\.space|onrender\.com)",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

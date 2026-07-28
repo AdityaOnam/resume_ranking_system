@@ -5,6 +5,7 @@ import uuid
 import datetime
 import traceback
 import logging
+import tempfile
 from app.models.resume import ResumeCreate, ResumeInDB, RankingScoreSchema
 from app.core.database import supabase
 from app.services.resume_parser import ResumeParser
@@ -21,7 +22,7 @@ router = APIRouter()
 parser = ResumeParser()
 embedding_engine = EmbeddingEngine()
 
-UPLOAD_DIR = "uploads/"
+STORAGE_BUCKET = "resumes"
 ALLOWED_EXTENSIONS = {".pdf", ".docx", ".doc"}
 MAX_UPLOAD_SIZE_BYTES = 10 * 1024 * 1024  # 10MB
 
@@ -77,6 +78,30 @@ def format_projects(parsed_resume):
         })
     return projects
 
+# ---------------------------------------------------------------------------
+# Supabase Storage helpers
+# ---------------------------------------------------------------------------
+
+def _upload_to_storage(file_bytes: bytes, storage_key: str, content_type: str):
+    """Upload raw bytes to the Supabase Storage bucket."""
+    supabase.storage.from_(STORAGE_BUCKET).upload(
+        path=storage_key,
+        file=file_bytes,
+        file_options={"content-type": content_type},
+    )
+
+def _download_from_storage(storage_key: str) -> bytes:
+    """Download a file from Supabase Storage and return its bytes."""
+    return supabase.storage.from_(STORAGE_BUCKET).download(storage_key)
+
+def _delete_from_storage(storage_key: str):
+    """Delete a file from Supabase Storage."""
+    try:
+        supabase.storage.from_(STORAGE_BUCKET).remove([storage_key])
+    except Exception as e:
+        logger.warning(f"Failed to delete '{storage_key}' from storage: {e}")
+
+
 @router.get("/", response_model=List[dict])
 def get_resumes(current_user: User = Depends(get_current_user)):
     res = supabase.table("resumes").select("id, name, email, skills, rankings, created_at, ats_score, ats_breakdown, ats_feedback, ats_gap_analysis, raw_text, parsed_data, ats_report").eq("user_id", current_user.id).order("created_at", desc=True).execute()
@@ -131,14 +156,9 @@ def delete_resume(resume_id: str, current_user: User = Depends(get_current_user)
     if not res.data:
         raise HTTPException(status_code=404, detail="Resume not found")
 
-    file_path = res.data[0].get("file_path")
-    if file_path:
-        upload_root = os.path.abspath(UPLOAD_DIR)
-        resolved_path = os.path.abspath(file_path)
-        if os.path.commonpath([upload_root, resolved_path]) == upload_root and os.path.exists(resolved_path):
-            os.unlink(resolved_path)
-        else:
-            logger.warning(f"Refusing to delete file outside uploads dir for resume {resume_id}: {file_path}")
+    storage_key = res.data[0].get("file_path")
+    if storage_key:
+        _delete_from_storage(storage_key)
 
     del_res = supabase.table("resumes").delete().eq("id", resume_id).execute()
     return {"msg": "Resume deleted"}
@@ -163,11 +183,21 @@ def _do_embed(mapped_resume: dict):
 def _do_ats(parsed_data: dict, resume_text: str):
     return calculate_general_score(parsed_data, resume_text)
 
-async def process_resume_background(job_id: str, file_path: str, filename: str, user_id: str):
+async def process_resume_background(job_id: str, storage_key: str, filename: str, user_id: str):
+    tmp_path = None
     try:
+        _update_job(job_id, step="Downloading resume from storage...")
+        file_bytes = _download_from_storage(storage_key)
+
+        ext = os.path.splitext(filename)[1].lower()
+        tmp_file = tempfile.NamedTemporaryFile(delete=False, suffix=ext)
+        tmp_file.write(file_bytes)
+        tmp_file.close()
+        tmp_path = tmp_file.name
+
         _update_job(job_id, step="Parsing resume with AI...")
         # Run blocking LLM call in a thread so FastAPI can still serve other requests
-        result = await asyncio.to_thread(_do_parse, file_path)
+        result = await asyncio.to_thread(_do_parse, tmp_path)
         parsed_resume_data = result.get("parsed_data", {})
         resume_text = result.get("raw_text", "")
         contact_info = parsed_resume_data.get("contact", {})
@@ -214,7 +244,7 @@ async def process_resume_background(job_id: str, file_path: str, filename: str, 
             "resume_text": resume_text,
             "raw_text": resume_text,
             "parsed_data": parsed_resume_data,
-            "file_path": file_path,
+            "file_path": storage_key,
             "rankings": rankings,
             "ats_score": ats_score,
             "ats_feedback": ats_feedback,
@@ -243,9 +273,9 @@ async def process_resume_background(job_id: str, file_path: str, filename: str, 
         resume_id = ""
         if existing.data:
             resume_id = existing.data[0]["id"]
-            old_path = existing.data[0]["file_path"]
-            if old_path and old_path != file_path and os.path.exists(old_path):
-                os.unlink(old_path)
+            old_storage_key = existing.data[0]["file_path"]
+            if old_storage_key and old_storage_key != storage_key:
+                _delete_from_storage(old_storage_key)
             supabase.table("resumes").update(db_resume).eq("id", resume_id).execute()
         else:
             ins_res = supabase.table("resumes").insert(db_resume).execute()
@@ -304,6 +334,13 @@ async def process_resume_background(job_id: str, file_path: str, filename: str, 
     except Exception as e:
         traceback.print_exc()
         _update_job(job_id, status="error", error=str(e))
+    finally:
+        # Always clean up the temp file
+        if tmp_path and os.path.exists(tmp_path):
+            try:
+                os.unlink(tmp_path)
+            except OSError:
+                pass
 
 @router.post("/")
 async def upload_resume(background_tasks: BackgroundTasks, resume: UploadFile = File(...), current_user: User = Depends(get_current_user)):
@@ -315,32 +352,27 @@ async def upload_resume(background_tasks: BackgroundTasks, resume: UploadFile = 
             detail=f"Unsupported file type: {ext}. Only PDF and DOCX are supported.",
         )
 
-    os.makedirs(UPLOAD_DIR, exist_ok=True)
-    safe_filename = f"{uuid.uuid4()}{ext}"
-    file_path = os.path.join(UPLOAD_DIR, safe_filename)
-
-    total_size = 0
+    # Read the entire file into memory (capped at MAX_UPLOAD_SIZE_BYTES)
+    file_bytes = b""
     chunk_size = 1024 * 1024
+    total_size = 0
+    while chunk := await resume.read(chunk_size):
+        total_size += len(chunk)
+        if total_size > MAX_UPLOAD_SIZE_BYTES:
+            raise HTTPException(status_code=413, detail="File exceeds the 10MB size limit.")
+        file_bytes += chunk
+
+    # Upload to Supabase Storage under a unique key
+    storage_key = f"{current_user.id}/{uuid.uuid4()}{ext}"
+    content_type = "application/pdf" if ext == ".pdf" else "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
     try:
-        with open(file_path, "wb") as buffer:
-            while chunk := await resume.read(chunk_size):
-                total_size += len(chunk)
-                if total_size > MAX_UPLOAD_SIZE_BYTES:
-                    buffer.close()
-                    os.unlink(file_path)
-                    raise HTTPException(status_code=413, detail="File exceeds the 10MB size limit.")
-                buffer.write(chunk)
-    except HTTPException:
-        raise
-    except Exception:
-        if os.path.exists(file_path):
-            os.unlink(file_path)
-        raise
+        _upload_to_storage(file_bytes, storage_key, content_type)
+    except Exception as e:
+        logger.error(f"Failed to upload to Supabase Storage: {e}")
+        raise HTTPException(status_code=500, detail="Failed to upload resume to storage.")
 
     job_id = str(uuid.uuid4())
     _create_job(job_id, current_user.id)
 
-    background_tasks.add_task(process_resume_background, job_id, file_path, original_filename, current_user.id)
+    background_tasks.add_task(process_resume_background, job_id, storage_key, original_filename, current_user.id)
     return {"msg": "Processing started", "job_id": job_id}
-
-

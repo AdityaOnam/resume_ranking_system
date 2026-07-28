@@ -22,6 +22,14 @@ class Settings(BaseSettings):
     # feedback generation with ZERO contention - 60s left no real safety
     # margin and was observed timing out on actual uploads.
     OLLAMA_TIMEOUT_SECONDS: float = 150.0
+    
+    # LLM Provider Configuration
+    # We support either "ollama" for local execution or "gemini" for cloud API.
+    LLM_PROVIDER: str = "ollama"
+    GEMINI_API_KEYS: str = ""
+    GEMINI_MODEL_NAME: str = "gemini-3.5-flash"
+    GEMINI_TIMEOUT_SECONDS: float = 60.0
+    
     MODEL_CACHE_DIR: str = _DEFAULT_MODEL_CACHE_DIR
 
     # Ranking pipeline: only the top-K most similar ELIGIBLE companies (by cheap

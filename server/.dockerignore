@@ -1,0 +1,13 @@
+.env
+.env.*
+venv/
+uploads/
+__pycache__/
+*.pyc
+*.pyo
+assets/models/cache/
+.git/
+*.log
+test_*.py
+scratch_*.py
+*.sql
