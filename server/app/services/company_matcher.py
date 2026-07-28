@@ -4,6 +4,7 @@ import logging
 from typing import Dict, Any, List, Optional
 from sentence_transformers.cross_encoder import CrossEncoder
 from app.services.embedding_engine import EmbeddingEngine
+from app.core.config import settings
 
 logger = logging.getLogger(__name__)
 
@@ -36,10 +37,10 @@ class CompanyMatcher:
 
     def _initialize(self):
         self._embedding_engine = EmbeddingEngine()
-        model_name = "cross-encoder/ms-marco-MiniLM-L-6-v2"
-        logger.info(f"Loading CrossEncoder model: {model_name}...")
+        model_name = settings.CROSS_ENCODER_MODEL_NAME
+        logger.info(f"Loading CrossEncoder model: {model_name} (cache: {settings.MODEL_CACHE_DIR})...")
         try:
-            self._cross_encoder = CrossEncoder(model_name)
+            self._cross_encoder = CrossEncoder(model_name, cache_folder=settings.MODEL_CACHE_DIR)
             logger.info("CrossEncoder loaded successfully.")
         except Exception as e:
             logger.error(f"Failed to load CrossEncoder {model_name}: {e}")
@@ -55,27 +56,36 @@ class CompanyMatcher:
         reasons = []
         eligible = True
 
-        # 1. CPI Cutoff
-        company_cpi = float(company_data.get("cpi", 0.0))
+        # 1. CPI/GPA Cutoff
+        company_cpi = float(company_data.get("min_gpa") or company_data.get("cpi", 0.0))
         
         education_list = candidate_data.get("education", [])
         candidate_cpi = 0.0
         if education_list:
-            candidate_cpi = float(education_list[0].get("gpa") or 0.0)
+            try:
+                candidate_cpi = float(education_list[0].get("gpa") or 0.0)
+            except (ValueError, TypeError):
+                candidate_cpi = 0.0
 
         if company_cpi > 0 and candidate_cpi < company_cpi:
             eligible = False
             reasons.append(f"CPI {candidate_cpi} does not meet the minimum requirement of {company_cpi}.")
 
         # 2. Branch Eligibility
-        company_branches = company_data.get("branch", [])
+        company_branches = company_data.get("required_branches") or company_data.get("branch", [])
         if company_branches:
             allowed_branches = set()
             for cb in company_branches:
-                # If the exact company branch exists in our mapping, expand it
-                mapped = BRANCH_MAPPING.get(cb, [cb])
-                for m in mapped:
-                    allowed_branches.add(m.lower())
+                cb_lower = cb.lower()
+                found_bucket = False
+                for bucket, members in BRANCH_MAPPING.items():
+                    if cb_lower in [m.lower() for m in members]:
+                        for m in members:
+                            allowed_branches.add(m.lower())
+                        found_bucket = True
+                        break
+                if not found_bucket:
+                    allowed_branches.add(cb_lower)
             
             candidate_branch = ""
             if education_list:
@@ -91,8 +101,8 @@ class CompanyMatcher:
         dsa_required = company_data.get("dsa_required", False)
         if dsa_required:
             candidate_skills = [
-                s.get("name", "").lower() if isinstance(s, dict) else str(s).lower() 
-                for s in candidate_data.get("skills", [])
+                s.get("name", "").lower() if isinstance(s, dict) else str(s).lower()
+                for s in (candidate_data.get("skills") or [])
             ]
             dsa_keywords = ["data structures", "algorithms", "dsa", "competitive programming", "problem solving"]
             has_dsa = any(k in s for k in dsa_keywords for s in candidate_skills)
@@ -107,35 +117,53 @@ class CompanyMatcher:
 
     # --- SOFT SCORING ---
 
-    def compute_company_score(self, candidate_data: Dict[str, Any], company_data: Dict[str, Any], 
-                              resume_text: str, jd_text: str) -> Dict[str, Any]:
+    def compute_company_score(self, candidate_data: Dict[str, Any], company_data: Dict[str, Any],
+                              resume_text: str, jd_text: str, skip_cross_encoder: bool = False) -> Dict[str, Any]:
         """
         Calculates the 100-point soft score for an eligible candidate.
+        `skip_cross_encoder` lets callers bypass the expensive CrossEncoder pass
+        (e.g. for companies a cheap bi-encoder pre-filter ranked as unlikely
+        matches) - the other 70 points are still computed normally.
         """
         score = 0.0
         breakdown = {}
 
-        # Safe extraction
+        # Safe extraction (skills/skill_set/core_skills may be explicitly null in
+        # the DB, not just absent — `.get(key, default)` only falls back when the
+        # *key* is missing, so a null value would otherwise raise TypeError here
+        # and silently drop this company from the candidate's entire ranking pass).
         candidate_skills = [
-            s.get("name", "").lower() if isinstance(s, dict) else str(s).lower() 
-            for s in candidate_data.get("skills", [])
+            s.get("name", "").lower() if isinstance(s, dict) else str(s).lower()
+            for s in (candidate_data.get("skills") or [])
         ]
         # Remove empties
         candidate_skills = [s for s in candidate_skills if s]
-        company_skills = [s.lower() for s in company_data.get("skill_set", []) + company_data.get("core_skills", [])]
-        
+        # Dedupe (a skill listed in both skill_set and core_skills would otherwise
+        # be double-counted in the denominator below, deflating the match score)
+        company_skills = list({
+            s.lower() for s in (company_data.get("skill_set") or []) + (company_data.get("core_skills") or [])
+        })
+
         # Flatten candidate project tech
         candidate_proj_tech = []
-        for p in candidate_data.get("projects", []):
-            candidate_proj_tech.extend([t.lower() for t in p.get("technologies", [])])
-        company_proj_tech = [t.lower() for t in company_data.get("project_keywords", [])]
+        for p in (candidate_data.get("projects") or []):
+            candidate_proj_tech.extend([t.lower() for t in (p.get("technologies") or [])])
+        company_proj_tech = [t.lower() for t in (company_data.get("project_keywords") or [])]
+
+        # NOTE: this was previously undefined here (only ever set inside
+        # check_hard_filters, a separate method) - every call to this method for
+        # an eligible candidate raised NameError at the "Academic Excellence"
+        # section below, which the caller's broad except silently swallowed by
+        # dropping the whole company from the candidate's rankings. That means
+        # eligible companies were never actually being scored.
+        education_list = candidate_data.get("education") or []
 
         # 1. Skill Overlap (30 points)
         skill_score = 0.0
         if company_skills:
             exact_matches = set(candidate_skills).intersection(set(company_skills))
             exact_score = min(20.0, (len(exact_matches) / max(1, len(company_skills))) * 20.0)
-            
+
             # Semantic similarity for unmatched skills
             unmatched_reqs = set(company_skills) - exact_matches
             semantic_score = 0.0
@@ -156,7 +184,7 @@ class CompanyMatcher:
 
         # 2. Cross-Encoder Match (30 points)
         cross_encoder_score = 0.0
-        if self._cross_encoder and resume_text and jd_text:
+        if not skip_cross_encoder and self._cross_encoder and resume_text and jd_text:
             try:
                 # Returns a logits score. Apply sigmoid to get 0-1 range.
                 import math
@@ -174,9 +202,13 @@ class CompanyMatcher:
         academic_score = 0.0
         
         # CPI Surplus (10 pts)
-        company_cpi = float(company_data.get("cpi", 0.0))
-        education_list = candidate_data.get("education", [])
-        candidate_cpi = float(education_list[0].get("gpa") or 0.0) if education_list else 0.0
+        company_cpi = float(company_data.get("min_gpa") or company_data.get("cpi", 0.0))
+        candidate_cpi = 0.0
+        if education_list:
+            try:
+                candidate_cpi = float(education_list[0].get("gpa") or 0.0)
+            except (ValueError, TypeError):
+                candidate_cpi = 0.0
         
         if company_cpi > 0 and candidate_cpi >= company_cpi:
             surplus_ratio = (candidate_cpi - company_cpi) / (10.0 - company_cpi + 0.001)
@@ -188,8 +220,8 @@ class CompanyMatcher:
         if candidate_branch:
             # Simple heuristic: if JD seems software oriented, reward CS/IT explicitly
             software_keywords = ["sde", "software", "web", "frontend", "backend", "fullstack", "data"]
-            jd_desc = (company_data.get("description") or "").lower()
-            jd_role = (company_data.get("internship_role") or "").lower()
+            jd_desc = (company_data.get("jd_text") or company_data.get("description") or "").lower()
+            jd_role = (company_data.get("role") or company_data.get("internship_role") or "").lower()
             
             is_software_role = any(kw in jd_desc or kw in jd_role for kw in software_keywords)
             cs_keywords = ["computer science", "cse", "it", "information technology", "m&c"]
@@ -240,9 +272,10 @@ class CompanyMatcher:
         results = []
         
         # Create a JD text string if not provided natively
-        jd_text = company_data.get("description", "")
+        jd_text = company_data.get("jd_text") or company_data.get("description", "")
         if not jd_text:
-            jd_text = f"Role: {company_data.get('internship_role', '')}. Skills required: {', '.join(company_data.get('skill_set', []))}."
+            role_text = company_data.get("role") or company_data.get("internship_role", "")
+            jd_text = f"Role: {role_text}. Skills required: {', '.join(company_data.get('skill_set', []))}."
             
         jd_embedding = self._embedding_engine.generate_job_embedding(jd_text)
 
@@ -298,7 +331,7 @@ class CompanyMatcher:
         for cand in top_candidates:
             res_obj = cand["resume"]
             p_data = cand["parsed_data"]
-            res_text = res_obj.get("resume_text", "")
+            res_text = res_obj.get("raw_text") or res_obj.get("resume_text", "")
             
             score_data = self.compute_company_score(p_data, company_data, res_text, jd_text)
             scored_candidates.append({

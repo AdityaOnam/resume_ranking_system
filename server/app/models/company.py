@@ -5,16 +5,29 @@ import uuid
 
 class CompanyBase(BaseModel):
     name: str
-    cpi: Optional[float] = 0.0
+    role: Optional[str] = None
+    jd_text: Optional[str] = ""
     skill_set: Optional[List[str]] = []
+    core_skills: Optional[List[str]] = []
+    project_keywords: Optional[List[str]] = []
+    
+    # Old legacy fields kept for backward compat if needed
+    cpi: Optional[float] = 0.0
+    branch: Optional[List[str]] = []
+    min_projects: Optional[int] = 0
+    dsa_required: Optional[bool] = False
     internship_role: Optional[str] = None
     visits_iit_patna: Optional[bool] = False
-    min_projects: Optional[int] = 0
-    project_keywords: Optional[List[str]] = []
-    branch: Optional[List[str]] = []
-    dsa_required: Optional[bool] = False
-    core_skills: Optional[List[str]] = []
-    description: Optional[str] = ""
+    
+    # New Fields
+    min_gpa: Optional[float] = 0.0
+    required_branches: Optional[List[str]] = []
+    skill_tiers: Optional[dict] = {"required": [], "preferred": [], "bonus": []}
+    weight_skills: Optional[float] = 0.35
+    weight_education: Optional[float] = 0.25
+    weight_projects: Optional[float] = 0.25
+    weight_experience: Optional[float] = 0.15
+    source: Optional[str] = "database"
 
 class CompanyCreate(CompanyBase):
     pass

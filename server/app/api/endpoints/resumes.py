@@ -1,10 +1,10 @@
-from fastapi import APIRouter, File, UploadFile, HTTPException
+from fastapi import APIRouter, File, UploadFile, HTTPException, BackgroundTasks
 from typing import List
 import os
-import shutil
 import uuid
 import datetime
 import traceback
+import logging
 from app.models.resume import ResumeCreate, ResumeInDB, RankingScoreSchema
 from app.core.database import supabase
 from app.services.resume_parser import ResumeParser
@@ -12,10 +12,37 @@ from app.services.rank_service import generate_rankings
 from app.services.embedding_engine import EmbeddingEngine
 from app.services.ats_scorer import calculate_general_score
 import asyncio
+from app.core.security import get_current_user, User
+from fastapi import Depends
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 parser = ResumeParser()
 embedding_engine = EmbeddingEngine()
+
+UPLOAD_DIR = "uploads/"
+ALLOWED_EXTENSIONS = {".pdf", ".docx", ".doc"}
+MAX_UPLOAD_SIZE_BYTES = 10 * 1024 * 1024  # 10MB
+
+# Job status is persisted in the "jobs" table (see server/migrations/001_create_jobs_table.sql)
+# rather than kept in memory, so it survives server restarts and works across multiple workers.
+
+def _create_job(job_id: str, user_id: str):
+    supabase.table("jobs").insert({
+        "id": job_id,
+        "status": "processing",
+        "step": "Initializing...",
+        "user_id": user_id
+    }).execute()
+
+def _update_job(job_id: str, **fields):
+    fields["updated_at"] = datetime.datetime.utcnow().isoformat()
+    supabase.table("jobs").update(fields).eq("id", job_id).execute()
+
+def _get_job(job_id: str):
+    res = supabase.table("jobs").select("*").eq("id", job_id).execute()
+    return res.data[0] if res.data else None
 
 def format_education(parsed_resume):
     branch = parsed_resume.get("Branch")
@@ -51,13 +78,22 @@ def format_projects(parsed_resume):
     return projects
 
 @router.get("/", response_model=List[dict])
-def get_resumes():
-    res = supabase.table("resumes").select("id, name, email, skills, rankings, created_at").order("created_at", desc=True).execute()
+def get_resumes(current_user: User = Depends(get_current_user)):
+    res = supabase.table("resumes").select("id, name, email, skills, rankings, created_at, ats_score, ats_breakdown, ats_feedback, ats_gap_analysis, raw_text, parsed_data, ats_report").eq("user_id", current_user.id).order("created_at", desc=True).execute()
     return res.data
 
+@router.get("/status/{job_id}")
+def get_status(job_id: str, current_user: User = Depends(get_current_user)):
+    job = _get_job(job_id)
+    if not job:
+        raise HTTPException(status_code=404, detail="Job not found")
+    if job.get("user_id") and job.get("user_id") != current_user.id:
+        raise HTTPException(status_code=404, detail="Job not found")
+    return job
+
 @router.get("/{resume_id}", response_model=ResumeInDB)
-def get_resume_by_id(resume_id: str):
-    res = supabase.table("resumes").select("*").eq("id", resume_id).execute()
+def get_resume_by_id(resume_id: str, current_user: User = Depends(get_current_user)):
+    res = supabase.table("resumes").select("*").eq("id", resume_id).eq("user_id", current_user.id).execute()
     if not res.data:
         raise HTTPException(status_code=404, detail="Resume not found")
         
@@ -89,70 +125,83 @@ def get_resume_by_id(resume_id: str):
     return resume
 
 @router.delete("/{resume_id}")
-def delete_resume(resume_id: str):
-    # Fetch file_path first
-    res = supabase.table("resumes").select("file_path").eq("id", resume_id).execute()
+def delete_resume(resume_id: str, current_user: User = Depends(get_current_user)):
+    # Fetch file_path first, ensure it belongs to the user
+    res = supabase.table("resumes").select("file_path").eq("id", resume_id).eq("user_id", current_user.id).execute()
     if not res.data:
         raise HTTPException(status_code=404, detail="Resume not found")
-    
+
     file_path = res.data[0].get("file_path")
-    if file_path and os.path.exists(file_path):
-        os.unlink(file_path)
-        
+    if file_path:
+        upload_root = os.path.abspath(UPLOAD_DIR)
+        resolved_path = os.path.abspath(file_path)
+        if os.path.commonpath([upload_root, resolved_path]) == upload_root and os.path.exists(resolved_path):
+            os.unlink(resolved_path)
+        else:
+            logger.warning(f"Refusing to delete file outside uploads dir for resume {resume_id}: {file_path}")
+
     del_res = supabase.table("resumes").delete().eq("id", resume_id).execute()
     return {"msg": "Resume deleted"}
 
-@router.post("/")
-async def upload_resume(resume: UploadFile = File(...)):
+def _strip_null_bytes(value):
+    """Postgres text columns reject \\x00; some PDF text extraction leaves stray
+    null bytes behind, which otherwise crashes the Supabase insert/update."""
+    if isinstance(value, str):
+        return value.replace("\x00", "")
+    if isinstance(value, dict):
+        return {k: _strip_null_bytes(v) for k, v in value.items()}
+    if isinstance(value, list):
+        return [_strip_null_bytes(v) for v in value]
+    return value
+
+def _do_parse(file_path: str):
+    return parser.parse(file_path)
+
+def _do_embed(mapped_resume: dict):
+    return embedding_engine.generate_resume_embedding(mapped_resume)
+
+def _do_ats(parsed_data: dict, resume_text: str):
+    return calculate_general_score(parsed_data, resume_text)
+
+async def process_resume_background(job_id: str, file_path: str, filename: str, user_id: str):
     try:
-        # Save file to uploads temp dir
-        upload_dir = "uploads/"
-        os.makedirs(upload_dir, exist_ok=True)
-        file_path = os.path.join(upload_dir, f"{uuid.uuid4()}-{resume.filename}")
-        
-        with open(file_path, "wb") as buffer:
-            shutil.copyfileobj(resume.file, buffer)
-            
-        # Parse resume natively
-        try:
-            result = parser.parse(file_path)
-            parsed_resume_data = result.get("parsed_data", {})
-            resume_text = result.get("raw_text", "")
-            contact_info = parsed_resume_data.get("contact", {})
-        except Exception as e:
-            traceback.print_exc()
-            raise HTTPException(status_code=500, detail=f"Failed to parse resume: {e}")
-            
+        _update_job(job_id, step="Parsing resume with AI...")
+        # Run blocking LLM call in a thread so FastAPI can still serve other requests
+        result = await asyncio.to_thread(_do_parse, file_path)
+        parsed_resume_data = result.get("parsed_data", {})
+        resume_text = result.get("raw_text", "")
+        contact_info = parsed_resume_data.get("contact", {})
+
         if not contact_info.get("email"):
-            if os.path.exists(file_path): os.unlink(file_path)
-            raise HTTPException(status_code=400, detail="Failed to extract email from resume")
+            logger.warning(f"Failed to extract email from resume {filename}, using fallback.")
+            # Don't fail the entire upload if email isn't found. Use a fallback so it can still be processed.
+            contact_info["email"] = f"unknown_{uuid.uuid4().hex[:8]}@resume.local"
 
-        # Fetch companies
-        companies_res = supabase.table("companies").select("*").execute()
-        companies = companies_res.data
-        
-        rankings = []
-        if companies:
-            # Generate rankings natively against existing companies!
-            try:
-                rankings = await generate_rankings(parsed_resume_data, resume_text, companies)
-            except Exception as e:
-                print(f"Warning: Failed to generate rankings: {e}")
-
-        name_from_file = os.path.splitext(resume.filename)[0].replace("_", " ").replace("-", " ")
-        name_from_parser = contact_info.get("name")
-        final_name = name_from_parser if name_from_parser else name_from_file
-
-        # Generate General ATS Score
+        _update_job(job_id, step="Calculating ATS Score...")
         try:
-            ats_result = calculate_general_score(parsed_resume_data, resume_text)
+            ats_result = await asyncio.to_thread(_do_ats, parsed_resume_data, resume_text)
             ats_score = ats_result["score"]
             ats_feedback = ats_result["feedback"]
-        except Exception as e:
-            traceback.print_exc()
-            print(f"Warning: Failed to generate ATS score: {e}")
+            ats_breakdown = ats_result.get("breakdown", {})
+            ats_gap_analysis = ats_result.get("gap_analysis", "")
+        except Exception:
             ats_score = 0
             ats_feedback = []
+            ats_breakdown = {}
+            ats_gap_analysis = ""
+
+        _update_job(job_id, step="Matching Companies...")
+        companies_res = supabase.table("companies").select("*").execute()
+        companies = companies_res.data
+        rankings = []
+        if companies:
+            try:
+                rankings = await asyncio.to_thread(generate_rankings, parsed_resume_data, resume_text, companies, user_id)
+            except Exception:
+                logger.exception(f"Ranking generation failed for job {job_id}")
+
+        name_from_file = os.path.splitext(filename)[0].replace("_", " ").replace("-", " ")
+        final_name = contact_info.get("name") or name_from_file
 
         mapped_resume = {
             "name": final_name,
@@ -163,43 +212,87 @@ async def upload_resume(resume: UploadFile = File(...)):
             "experience": parsed_resume_data.get("experience", []),
             "projects": parsed_resume_data.get("projects", []),
             "resume_text": resume_text,
+            "raw_text": resume_text,
+            "parsed_data": parsed_resume_data,
             "file_path": file_path,
             "rankings": rankings,
             "ats_score": ats_score,
-            "ats_feedback": ats_feedback
+            "ats_feedback": ats_feedback,
+            "ats_breakdown": ats_breakdown,
+            "ats_gap_analysis": ats_gap_analysis,
+            "ats_report": {
+                "feedback": ats_feedback,
+                "breakdown": ats_breakdown,
+                "gap_analysis": ats_gap_analysis
+            },
+            "user_id": user_id,
         }
 
-        # Generate and attach semantic embeddings
+        _update_job(job_id, step="Generating Embeddings...")
         try:
-            mapped_resume["embedding"] = embedding_engine.generate_resume_embedding(mapped_resume)
-        except Exception as e:
-            traceback.print_exc()
-            print(f"Warning: Failed to generate embedding: {e}")
+            embedding = await asyncio.to_thread(_do_embed, mapped_resume)
+            mapped_resume["embedding"] = embedding
+        except Exception:
+            pass
 
-        # Check existing
+        db_resume = _strip_null_bytes(mapped_resume)
+
+        _update_job(job_id, step="Saving to Database...")
         existing = supabase.table("resumes").select("id, file_path").eq("email", mapped_resume["email"]).execute()
-        is_update = False
-        resume_id = ""
 
+        resume_id = ""
         if existing.data:
-            is_update = True
             resume_id = existing.data[0]["id"]
             old_path = existing.data[0]["file_path"]
-            
             if old_path and old_path != file_path and os.path.exists(old_path):
                 os.unlink(old_path)
-                
-            # Update
-            upd_res = supabase.table("resumes").update(mapped_resume).eq("id", resume_id).execute()
+            supabase.table("resumes").update(db_resume).eq("id", resume_id).execute()
         else:
-            # Create
-            ins_res = supabase.table("resumes").insert(mapped_resume).execute()
+            ins_res = supabase.table("resumes").insert(db_resume).execute()
             if ins_res.data:
                 resume_id = ins_res.data[0]["id"]
+                
+        if resume_id and rankings:
+            rankings_to_insert = []
+            for r in rankings:
+                comp_id = r.get("company")
+                if isinstance(comp_id, dict):
+                    comp_id = comp_id.get("id") or comp_id.get("_id")
+                
+                rankings_to_insert.append({
+                    "resume_id": resume_id,
+                    "company_id": comp_id,
+                    "overall_score": r.get("score"),
+                    "rank": r.get("rank"),
+                    "dimension_scores": {
+                        **r.get("score_breakdown", {}),
+                        "eligible": r.get("eligible", True),
+                        "eligibility_reasons": r.get("eligibility_reasons", [])
+                    }
+                })
+            try:
+                for chunk in [rankings_to_insert[i:i+100] for i in range(0, len(rankings_to_insert), 100)]:
+                    supabase.table("rankings").upsert(chunk).execute()
+            except Exception as rank_err:
+                logger.error(f"Failed to write rankings for resume {resume_id}: {rank_err}")
 
-        response_payload = {
-            "msg": "Resume updated successfully" if is_update else "Resume uploaded and processed successfully",
-            "resume": {
+        try:
+            supabase.table("ats_history").insert({
+                "user_id": user_id,
+                "resume_id": resume_id,
+                "name": mapped_resume["name"],
+                "email": mapped_resume["email"],
+                "ats_score": ats_score,
+            }).execute()
+        except Exception as hist_err:
+            logger.warning(f"Failed to write ATS history for job {job_id}: {hist_err}")
+
+        _update_job(
+            job_id,
+            status="completed",
+            step="Done",
+            resume_id=resume_id,
+            resume={
                 "id": resume_id,
                 "name": mapped_resume["name"],
                 "email": mapped_resume["email"],
@@ -207,11 +300,47 @@ async def upload_resume(resume: UploadFile = File(...)):
                 "ats_score": ats_score,
                 "ats_feedback": ats_feedback
             }
-        }
-        
-        return response_payload
-    except HTTPException as he:
-        raise he
+        )
     except Exception as e:
         traceback.print_exc()
-        raise HTTPException(status_code=500, detail=str(e))
+        _update_job(job_id, status="error", error=str(e))
+
+@router.post("/")
+async def upload_resume(background_tasks: BackgroundTasks, resume: UploadFile = File(...), current_user: User = Depends(get_current_user)):
+    original_filename = os.path.basename(resume.filename or "")
+    ext = os.path.splitext(original_filename)[1].lower()
+    if ext not in ALLOWED_EXTENSIONS:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Unsupported file type: {ext}. Only PDF and DOCX are supported.",
+        )
+
+    os.makedirs(UPLOAD_DIR, exist_ok=True)
+    safe_filename = f"{uuid.uuid4()}{ext}"
+    file_path = os.path.join(UPLOAD_DIR, safe_filename)
+
+    total_size = 0
+    chunk_size = 1024 * 1024
+    try:
+        with open(file_path, "wb") as buffer:
+            while chunk := await resume.read(chunk_size):
+                total_size += len(chunk)
+                if total_size > MAX_UPLOAD_SIZE_BYTES:
+                    buffer.close()
+                    os.unlink(file_path)
+                    raise HTTPException(status_code=413, detail="File exceeds the 10MB size limit.")
+                buffer.write(chunk)
+    except HTTPException:
+        raise
+    except Exception:
+        if os.path.exists(file_path):
+            os.unlink(file_path)
+        raise
+
+    job_id = str(uuid.uuid4())
+    _create_job(job_id, current_user.id)
+
+    background_tasks.add_task(process_resume_background, job_id, file_path, original_filename, current_user.id)
+    return {"msg": "Processing started", "job_id": job_id}
+
+

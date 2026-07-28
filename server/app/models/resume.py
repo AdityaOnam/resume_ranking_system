@@ -8,6 +8,9 @@ class RankingScoreSchema(BaseModel):
     score: float
     rank: int
     totalResumes: Optional[int] = None
+    eligible: Optional[bool] = None
+    eligibility_reasons: Optional[List[str]] = []
+    score_breakdown: Optional[Dict[str, float]] = {}
 
 class ResumeBase(BaseModel):
     name: str
@@ -18,7 +21,15 @@ class ResumeBase(BaseModel):
     experience: Optional[List[Dict[str, Any]]] = []
     projects: Optional[List[Dict[str, Any]]] = []
     resume_text: str
+    raw_text: Optional[str] = None
     file_path: Optional[str] = None
+    ats_score: Optional[int] = None
+    ats_feedback: Optional[List[str]] = []
+    ats_breakdown: Optional[Dict[str, float]] = {}
+    ats_gap_analysis: Optional[str] = ""
+    ats_report: Optional[Dict[str, Any]] = {}
+    parsed_data: Optional[Dict[str, Any]] = {}
+    is_active: Optional[bool] = True
 
 class ResumeCreate(ResumeBase):
     rankings: Optional[List[RankingScoreSchema]] = []

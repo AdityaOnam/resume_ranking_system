@@ -1,10 +1,10 @@
 import React, { useState } from 'react';
+import { parseJobDescription, createCompany } from '../../services/api';
 
 const AddCompanyModal = ({ onClose, onSaved }) => {
   const [jdText, setJdText] = useState('');
   const [isParsing, setIsParsing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
-  const [parsedData, setParsedData] = useState(null);
 
   // Form fields
   const [formData, setFormData] = useState({
@@ -14,33 +14,29 @@ const AddCompanyModal = ({ onClose, onSaved }) => {
     internship_role: '',
     min_projects: 0,
     dsa_required: false,
-    description: ''
+    visits_iit_patna: false,
+    jd_text: ''
   });
 
   const handleParse = async () => {
     if (!jdText.trim()) return;
     setIsParsing(true);
     try {
-      const res = await fetch('http://127.0.0.1:5000/api/companies/parse-jd', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text: jdText })
+      const res = await parseJobDescription(jdText);
+      const data = res.data;
+      setFormData({
+        name: data.name || '',
+        cpi: data.cpi || 0,
+        skill_set: Array.isArray(data.skill_set) ? data.skill_set : [],
+        internship_role: data.internship_role || '',
+        min_projects: data.min_projects || 0,
+        dsa_required: data.dsa_required || false,
+        visits_iit_patna: data.visits_iit_patna || false,
+        // Store the full pasted JD, not just the LLM's one-line summary (data.description) -
+        // jd_text is what company_matcher.py's CrossEncoder compares against full resume text,
+        // so the fuller version scores matches better.
+        jd_text: jdText
       });
-      if (res.ok) {
-        const data = await res.json();
-        setParsedData(data);
-        setFormData({
-          name: data.name || '',
-          cpi: data.cpi || 0,
-          skill_set: Array.isArray(data.skill_set) ? data.skill_set : [],
-          internship_role: data.internship_role || '',
-          min_projects: data.min_projects || 0,
-          dsa_required: data.dsa_required || false,
-          description: data.description || ''
-        });
-      } else {
-        alert("Failed to parse Job Description");
-      }
     } catch (e) {
       console.error(e);
       alert("Error parsing Job Description");
@@ -53,20 +49,11 @@ const AddCompanyModal = ({ onClose, onSaved }) => {
     if (!formData.name) return alert("Company name is required");
     setIsSaving(true);
     try {
-      const res = await fetch('http://127.0.0.1:5000/api/companies/', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData)
-      });
-      if (res.ok) {
-        onSaved();
-      } else {
-        const err = await res.json();
-        alert(err.detail || "Failed to save company");
-      }
+      await createCompany(formData);
+      onSaved();
     } catch (e) {
       console.error(e);
-      alert("Error saving company");
+      alert(e.response?.data?.detail || "Error saving company");
     } finally {
       setIsSaving(false);
     }
@@ -182,13 +169,25 @@ const AddCompanyModal = ({ onClose, onSaved }) => {
               <label htmlFor="dsa" className="text-sm text-on-surface">Data Structures &amp; Algorithms Required</label>
             </div>
 
+            <div className="flex items-center gap-3">
+              <input
+                type="checkbox"
+                id="visitsIitPatna"
+                checked={formData.visits_iit_patna}
+                onChange={e => setFormData({...formData, visits_iit_patna: e.target.checked})}
+                className="w-4 h-4 rounded text-primary focus:ring-primary"
+                style={{ background: '#1C1F3F', border: '1px solid #343753' }}
+              />
+              <label htmlFor="visitsIitPatna" className="text-sm text-on-surface">Visits Campus for Hiring</label>
+            </div>
+
             <div>
-              <label className="block text-xs font-semibold text-outline mb-1 mt-2 uppercase tracking-wider">Brief Description</label>
+              <label className="block text-xs font-semibold text-outline mb-1 mt-2 uppercase tracking-wider">Job Description Text</label>
               <textarea
                 className="w-full h-24 rounded-lg p-3 text-sm text-on-surface focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary resize-none"
                 style={{ background: '#1C1F3F', border: '1px solid #343753' }}
-                value={formData.description}
-                onChange={e => setFormData({...formData, description: e.target.value})}
+                value={formData.jd_text}
+                onChange={e => setFormData({...formData, jd_text: e.target.value})}
               />
             </div>
             

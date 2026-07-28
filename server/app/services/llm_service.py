@@ -2,23 +2,22 @@ import json
 import logging
 from typing import Dict, Any, Optional
 import ollama
-import psutil
+from app.core.config import settings
 
 logger = logging.getLogger(__name__)
 
 class LLMService:
     def __init__(self):
-        # Dynamically select model based on available RAM to prevent crashes
-        mem = psutil.virtual_memory()
-        mem_percent = mem.percent
-        
-        # If memory usage is > 50%, fall back to the tiny 1B model. Otherwise, use 8B quantized.
-        if mem_percent < 50.0:
-            self.model_name = "llama3.1:8b-instruct-q2_K"
-            logger.info(f"Memory is at {mem_percent}%. Using {self.model_name}.")
-        else:
-            self.model_name = "llama3.2:1b"
-            logger.info(f"Memory is HIGH ({mem_percent}%). Using lightweight {self.model_name}.")
+        # Model name and Ollama host are configurable via .env
+        # (OLLAMA_MODEL_NAME / OLLAMA_HOST) so this works unmodified whether
+        # Ollama runs on localhost or a separate host/container.
+        self.model_name = settings.OLLAMA_MODEL_NAME
+        # timeout is forwarded straight through to the underlying httpx client -
+        # without it, a hung/overloaded Ollama daemon stalls the calling thread
+        # indefinitely (this only ever runs inside asyncio.to_thread, so it can't
+        # freeze the event loop, but it can still stall a single upload forever).
+        self._client = ollama.Client(host=settings.OLLAMA_HOST, timeout=settings.OLLAMA_TIMEOUT_SECONDS)
+        logger.info(f"Using Ollama model: {self.model_name} @ {settings.OLLAMA_HOST} (timeout={settings.OLLAMA_TIMEOUT_SECONDS}s)")
 
     def extract_resume_data(self, raw_text: str) -> Optional[Dict[str, Any]]:
         """
@@ -75,7 +74,7 @@ The JSON MUST follow this exact schema:
 Respond ONLY with valid JSON. Do not include markdown formatting like ```json or any conversational text."""
 
         try:
-            response = ollama.chat(
+            response = self._client.chat(
                 model=self.model_name,
                 messages=[
                     {"role": "system", "content": system_prompt},
@@ -122,7 +121,7 @@ The JSON MUST follow this exact schema:
 Respond ONLY with valid JSON. Do not include markdown formatting like ```json or any conversational text."""
 
         try:
-            response = ollama.chat(
+            response = self._client.chat(
                 model=self.model_name,
                 messages=[
                     {"role": "system", "content": system_prompt},
@@ -161,7 +160,7 @@ Your task is to provide a concise, professional 'Gap Analysis' (2-3 paragraphs m
 Do NOT output Markdown headers or bullet lists unless absolutely necessary. Keep it as a readable, direct feedback paragraph to the candidate."""
 
         try:
-            response = ollama.chat(
+            response = self._client.chat(
                 model=self.model_name,
                 messages=[
                     {"role": "system", "content": system_prompt},
@@ -198,7 +197,7 @@ Your task is to provide a concise, professional 'Resume Gap Analysis' (2-3 parag
 Do NOT output Markdown headers or bullet lists unless absolutely necessary. Keep it as a readable, direct feedback paragraph to the candidate."""
 
         try:
-            response = ollama.chat(
+            response = self._client.chat(
                 model=self.model_name,
                 messages=[
                     {"role": "system", "content": system_prompt},

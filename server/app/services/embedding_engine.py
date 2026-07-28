@@ -2,13 +2,16 @@ import logging
 import math
 from typing import List, Dict, Any
 from sentence_transformers import SentenceTransformer
+from app.core.config import settings
 
 logger = logging.getLogger(__name__)
 
 class EmbeddingEngine:
     """
     Singleton service for generating semantic embeddings.
-    Uses 'all-MiniLM-L6-v2' to produce 384-dimensional vectors.
+    Model name and cache location are configurable via .env
+    (EMBEDDING_MODEL_NAME / MODEL_CACHE_DIR) so this works unmodified
+    across machines/deployments.
     """
     _instance = None
     _model = None
@@ -21,14 +24,15 @@ class EmbeddingEngine:
 
     def _initialize_model(self):
         """Loads the SentenceTransformer model into memory."""
-        model_name = "all-MiniLM-L6-v2"
-        logger.info(f"Loading SentenceTransformer model: {model_name}...")
+        model_name = settings.EMBEDDING_MODEL_NAME
+        logger.info(f"Loading SentenceTransformer model: {model_name} (cache: {settings.MODEL_CACHE_DIR})...")
         try:
-            self._model = SentenceTransformer(model_name)
+            self._model = SentenceTransformer(model_name, cache_folder=settings.MODEL_CACHE_DIR)
             logger.info("Model loaded successfully.")
         except Exception as e:
             logger.error(f"Failed to load model {model_name}: {e}")
             raise
+        self._skill_embedding_cache: Dict[str, List[float]] = {}
 
     def generate_resume_embedding(self, parsed_data: Dict[str, Any]) -> List[float]:
         """
@@ -78,12 +82,26 @@ class EmbeddingEngine:
 
         return dot_product / (norm_a * norm_b)
 
+    def _get_skill_embedding(self, skill: str) -> List[float]:
+        """
+        Returns a cached embedding for a skill string. Skill vocabularies are small
+        and reused heavily across companies/resumes, so caching avoids re-running the
+        model for the same string on every comparison.
+        """
+        key = (skill or "").strip().lower()
+        cached = self._skill_embedding_cache.get(key)
+        if cached is not None:
+            return cached
+        embedding = self._embed_text(skill)
+        self._skill_embedding_cache[key] = embedding
+        return embedding
+
     def compute_skill_similarity(self, skill_a: str, skill_b: str) -> float:
         """
-        Computes semantic similarity between two skill strings on the fly.
+        Computes semantic similarity between two skill strings, using cached embeddings.
         """
-        vec_a = self._embed_text(skill_a)
-        vec_b = self._embed_text(skill_b)
+        vec_a = self._get_skill_embedding(skill_a)
+        vec_b = self._get_skill_embedding(skill_b)
         return self.compute_similarity(vec_a, vec_b)
 
     def _flatten_resume(self, parsed_data: Dict[str, Any]) -> str:
@@ -96,7 +114,16 @@ class EmbeddingEngine:
         # 1. Skills (Highest weight/priority, so put them near the beginning)
         skills = parsed_data.get("skills", [])
         if skills:
-            parts.append(f"Skills: {', '.join(skills)}.")
+            clean_skills = []
+            for s in skills:
+                if isinstance(s, dict):
+                    # resume_parser's Bayesian skill merge outputs {"name": ..., "confidence": ..., "sources": ...} dicts
+                    val = s.get("name") or s.get("skill") or (list(s.values())[0] if s.values() else "")
+                    if val: clean_skills.append(str(val))
+                else:
+                    clean_skills.append(str(s))
+            if clean_skills:
+                parts.append(f"Skills: {', '.join(clean_skills)}.")
 
         # 2. Experience
         experiences = parsed_data.get("experience", [])
@@ -123,7 +150,15 @@ class EmbeddingEngine:
                 techs = proj.get("technologies", [])
                 desc = proj.get("description", "")
                 
-                tech_str = f"using {', '.join(techs)}" if techs else ""
+                clean_techs = []
+                for t in techs:
+                    if isinstance(t, dict):
+                        val = t.get("name") or t.get("technology") or (list(t.values())[0] if t.values() else "")
+                        if val: clean_techs.append(str(val))
+                    else:
+                        clean_techs.append(str(t))
+
+                tech_str = f"using {', '.join(clean_techs)}" if clean_techs else ""
                 header = f"{title} {tech_str}".strip()
                 if header:
                     proj_texts.append(f"{header}. {desc}".strip())

@@ -20,10 +20,9 @@ import logging
 from typing import Optional, List, Dict, Any
 
 import fitz  # PyMuPDF
-import spacy
 
 from app.services.github_service import GitHubService
-from app.services.llm_service import LLMService
+from app.services.nlp_model import nlp
 
 def bayesian_confidence_update(prior: float, source_reliability: float, agreement: bool) -> float:
     """Update confidence using Bayes' Theorem."""
@@ -37,17 +36,6 @@ def bayesian_confidence_update(prior: float, source_reliability: float, agreemen
         return ((1.0 - source_reliability) * prior) / p_disagree
 
 logger = logging.getLogger(__name__)
-
-# ---------------------------------------------------------------------------
-# Load spaCy model (singleton, loaded once at module import)
-# ---------------------------------------------------------------------------
-try:
-    nlp = spacy.load("en_core_web_sm")
-except OSError:
-    logger.warning("Downloading spaCy model en_core_web_sm …")
-    import subprocess, sys
-    subprocess.run([sys.executable, "-m", "spacy", "download", "en_core_web_sm"], check=True)
-    nlp = spacy.load("en_core_web_sm")
 
 # ---------------------------------------------------------------------------
 # Load skill taxonomy from JSON data file
@@ -257,10 +245,10 @@ class ResumeParser:
         experience = self._extract_experience(raw_text, sections)
         projects = self._extract_projects(raw_text, sections)
 
-        # 2. LLM Structured Extraction (Full Profile)
-        logger.info("Triggering Llama 3.1 LLM extraction...")
-        llm_svc = LLMService()
-        llm_data = llm_svc.extract_resume_data(raw_text) or {}
+        # 2. LLM Structured Extraction (DISABLED - too slow on CPU, heuristics are sufficient)
+        # llm_svc = LLMService()
+        # llm_data = llm_svc.extract_resume_data(raw_text) or {}
+        llm_data = {}
 
         # 3. Merging LLM and Heuristic data BEFORE GitHub
         # Merge education: If LLM missed GPA but Regex found it, inject it.

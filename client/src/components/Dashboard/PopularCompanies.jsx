@@ -1,6 +1,6 @@
-import  { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { ArrowRight, Building2, Briefcase, Code, Server } from "lucide-react";
+import { useQuery } from '@tanstack/react-query';
 import { Skeleton } from "../ui/skeleton";
 import { getCompanies } from "../../services/api";
 import { Link } from "react-router-dom";
@@ -10,29 +10,18 @@ const cardHover = {
   hover: { scale: 1.02, transition: { duration: 0.3 } },
 };
 
+const ICON_STYLES = [
+  'bg-primary/10 text-primary',
+  'bg-secondary/10 text-secondary',
+  'bg-error/10 text-error'
+];
+
 const PopularCompanies = () => {
-  const [companies, setCompanies] = useState([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [, setError] = useState(null);
-  const [showAll, ] = useState(false);
-
-  useEffect(() => {
-    const fetchCompanies = async () => {
-      try {
-        setIsLoading(true);
-        const response = await getCompanies();
-        setCompanies(response.data || []);
-        setError(null);
-      } catch (err) {
-        console.error("Failed to fetch companies", err);
-        setError("Failed to load companies. Please try again later.");
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    fetchCompanies();
-  }, []);
+  const { data, isLoading } = useQuery({
+    queryKey: ['companies'],
+    queryFn: () => getCompanies().then(r => r.data),
+  });
+  const companies = Array.isArray(data) ? data : [];
 
   const getCompanyIcon = (company) => {
     const name = company.name?.toLowerCase() || "";
@@ -40,7 +29,7 @@ const PopularCompanies = () => {
       return <Code className="w-6 h-6" />;
     } else if (name.includes("bank") || name.includes("finance") || name.includes("capital")) {
       return <Building2 className="w-6 h-6" />;
-    } else if (company.requiredSkills?.some(skill =>
+    } else if (company.skill_set?.some(skill =>
       skill.toLowerCase().includes("cloud") || skill.toLowerCase().includes("aws")
     )) {
       return <Server className="w-6 h-6" />;
@@ -49,13 +38,7 @@ const PopularCompanies = () => {
     }
   };
 
-  const getColorClass = (index) => {
-    const colors = ["amber", "primary", "secondary"];
-    return colors[index % colors.length];
-  };
-
-  const displayedCompanies = showAll ? companies : companies.slice(0, 6);
-  console.log(displayedCompanies)
+  const displayedCompanies = companies.slice(0, 6);
 
   return (
     <motion.section
@@ -65,10 +48,10 @@ const PopularCompanies = () => {
       viewport={{ once: true }}
       className="py-12"
     >
-      <h2 className="text-3xl font-heading font-bold text-center text-slate-900 dark:text-white mb-4">
+      <h2 className="text-3xl font-display font-bold text-center text-on-surface mb-4">
         Popular Companies
       </h2>
-      <p className="text-center text-slate-600 dark:text-slate-400 mb-10 max-w-3xl mx-auto">
+      <p className="text-center text-on-surface-variant mb-10 max-w-3xl mx-auto">
         Some of the top companies in our database that are actively looking for candidates
       </p>
 
@@ -77,7 +60,7 @@ const PopularCompanies = () => {
           Array.from({ length: 6 }).map((_, index) => (
             <div
               key={index}
-              className="bg-white dark:bg-slate-800 rounded-xl shadow-md p-6 border border-slate-200 dark:border-slate-700"
+              className="card p-6"
             >
               <div className="flex items-start justify-between">
                 <div className="flex items-center">
@@ -99,49 +82,49 @@ const PopularCompanies = () => {
         ) : (
           displayedCompanies.map((company, index) => (
             <motion.div
-              key={company._id || index}
+              key={company._id || company.id || index}
               initial="rest"
               whileHover="hover"
               animate="rest"
               variants={cardHover}
-              className="bg-white dark:bg-slate-800 rounded-xl shadow-md p-6 border border-slate-200 dark:border-slate-700 dark-transition"
+              className="card card-hover p-6"
             >
               <div className="flex items-start justify-between">
                 <div className="flex items-center">
                   <div
-                    className={`w-12 h-12 bg-${getColorClass(1)}-100 dark:bg-${getColorClass(1)}-900/30 text-${getColorClass(0)}-600 dark:text-${getColorClass(index)}-400 rounded-lg flex items-center justify-center mr-4`}
+                    className={`w-12 h-12 ${ICON_STYLES[index % ICON_STYLES.length]} rounded-lg flex items-center justify-center mr-4`}
                   >
                     {getCompanyIcon(company)}
                   </div>
                   <div>
-                    <h3 className="text-lg font-heading font-semibold text-slate-900 dark:text-white">
+                    <h3 className="text-lg font-display font-semibold text-on-surface">
                       {company.name}
                     </h3>
-                    <p className="text-sm text-slate-500 dark:text-slate-400">
-                      {company.internshipRole}
+                    <p className="text-sm text-on-surface-variant">
+                      {company.internship_role}
                     </p>
                   </div>
                 </div>
               </div>
-                <div className="bg-primary-100 dark:bg-primary-900/30 text-primary-800 dark:text-white text-xs font-medium py-1 px-2 rounded">
-                  Visits IIT Patna: {company.visitsIITPatna ? "Yes" : "No"}
+                <div className="bg-primary/15 text-primary text-xs font-medium py-1 px-2 rounded mt-3 inline-block">
+                  Visits IIT Patna: {company.visits_iit_patna ? "Yes" : "No"}
                 </div>
               <div className="mt-4">
                 <div className="flex justify-between text-sm mb-1">
-                  <span className="text-slate-600 dark:text-slate-400">Min. CPI/GPA</span>
-                  <span className="font-medium text-slate-900 dark:text-slate-200">
+                  <span className="text-on-surface-variant">Min. CPI/GPA</span>
+                  <span className="font-medium text-on-surface">
                     {company?.cpi || "Not Available"}
                   </span>
                 </div>
-                <div className="flex justify-between gap-10  text-sm mb-1">
-                  <span className="text-slate-600 dark:text-slate-400">Required Skills</span>
-                  <span className="font-medium  text-slate-900 dark:text-slate-200">
-                    {(company?.skillSet || []).slice(0, 3).join(", ") || "None"}
+                <div className="flex justify-between gap-10 text-sm mb-1">
+                  <span className="text-on-surface-variant">Required Skills</span>
+                  <span className="font-medium text-on-surface text-right">
+                    {(company?.skill_set || []).slice(0, 3).join(", ") || "None"}
                   </span>
                 </div>
-                <div className="flex justify-between  text-sm">
-                  <span className="text-slate-600 dark:text-slate-400">Branches</span>
-                  <span className="font-medium text-slate-900 dark:text-slate-200">
+                <div className="flex justify-between text-sm">
+                  <span className="text-on-surface-variant">Branches</span>
+                  <span className="font-medium text-on-surface text-right">
                     {(company?.branch || []).slice(0, 3).join(", ") || "Any"}
                   </span>
                 </div>
@@ -151,12 +134,10 @@ const PopularCompanies = () => {
         )}
       </div>
 
-      
-
       <div className="mt-10 text-center">
         <Link to="/companies">
           <button
-            className="text-primary-700 dark:text-white bg-primary-50 dark:bg-slate-800 hover:bg-primary-100 dark:hover:bg-slate-700 border border-primary-200 dark:border-slate-600 py-2 px-4 rounded flex items-center justify-center mx-auto"
+            className="btn-ghost py-2 px-4 rounded flex items-center justify-center mx-auto"
           >
             View All Companies
             <ArrowRight className="ml-2 w-4 h-4" />

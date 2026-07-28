@@ -10,7 +10,7 @@ export const Skeleton = ({ className, variant = "rounded", ...props }) => {
   
   return (
     <div 
-      className={`animate-pulse bg-gray-200 dark:bg-gray-700 ${variantClasses[variant]} ${className}`} 
+      className={`animate-pulse bg-surface-variant ${variantClasses[variant]} ${className}`} 
       {...props} 
     />
   );

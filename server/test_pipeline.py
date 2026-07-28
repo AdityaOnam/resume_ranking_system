@@ -13,7 +13,7 @@ from app.services.company_matcher import CompanyMatcher
 from app.services.llm_service import LLMService
 
 # Set this to True to bypass loading heavy AI models (prevents RAM crashes)
-MOCK_HEAVY_MODELS = True
+MOCK_HEAVY_MODELS = False
 
 def run_test():
     print("="*60)
@@ -133,7 +133,7 @@ def run_test():
     else:
         score_data = matcher.compute_company_score(parsed_data, company_data, resume_text, company_data["description"])
         
-    print(f"✅ Soft Match Score: {score_data['score']}/100")
+    print(f"[SUCCESS] Soft Match Score: {score_data['score']}/100")
     print(f"   Breakdown: {score_data['breakdown']}")
 
     # 5. RUN GAP ANALYSIS (LLM Stage 3)

@@ -1,5 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
-
+import { useNavigate } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
+import { uploadResume, getUploadStatus, getResumes, getCompanies } from '../../services/api';
+import FeaturesSection from './FeaturesSection';
+import PopularCompanies from './PopularCompanies';
 const UploadStep = ({ title, desc, status, progress }) => {
   // status: 'done' | 'active' | 'pending'
   return (
@@ -28,9 +32,8 @@ const UploadStep = ({ title, desc, status, progress }) => {
         {status === 'active' && (
           <div className="mt-3 flex items-center gap-2">
             <div className="flex-1 h-1.5 rounded-full overflow-hidden bg-surface-container-highest">
-              <div className="h-full rounded-full bg-primary transition-all duration-700" style={{ width: `${progress}%` }} />
+              <div className="h-full rounded-full bg-primary animate-pulse" style={{ width: '100%' }} />
             </div>
-            <span className="text-xs font-mono text-primary">{progress}%</span>
           </div>
         )}
       </div>
@@ -61,27 +64,52 @@ const Dashboard = () => {
   const [dragOver, setDragOver] = useState(false);
   const [uploadedFile, setUploadedFile] = useState(null);
   const [uploadStep, setUploadStep] = useState(0); // 0=none, 1=uploaded, 2=parsing, 3=embedding, 4=ranked
-  const [stats, setStats] = useState({ resumes: 0, companies: 0, rankings: 0 });
   const fileInputRef = useRef();
+  const navigate = useNavigate();
+  const isMountedRef = useRef(true);
+  const pollTimeoutRef = useRef(null);
+
+  const { data: resumesData } = useQuery({
+    queryKey: ['resumes'],
+    queryFn: () => getResumes().then((r) => r.data),
+    initialData: [],
+  });
+
+  const { data: companiesData } = useQuery({
+    queryKey: ['companies'],
+    queryFn: () => getCompanies().then((r) => r.data),
+    initialData: [],
+  });
 
   useEffect(() => {
-    Promise.all([
-      fetch('http://127.0.0.1:5000/api/resumes/').then((r) => r.json()).catch(() => []),
-      fetch('http://127.0.0.1:5000/api/companies/').then((r) => r.json()).catch(() => []),
-    ]).then(([resumes, companies]) => {
-      const r = Array.isArray(resumes) ? resumes : [];
-      const c = Array.isArray(companies) ? companies : [];
-      const rankings = r.reduce((acc, res) => {
-        const rj = typeof res.rankings === 'string' ? JSON.parse(res.rankings || '[]') : res.rankings || [];
-        return acc + (Array.isArray(rj) ? rj.length : 0);
-      }, 0);
-      setStats({ resumes: r.length, companies: c.length, rankings });
-    });
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+      if (pollTimeoutRef.current) clearTimeout(pollTimeoutRef.current);
+    };
   }, []);
 
+  const resumes = Array.isArray(resumesData) ? resumesData : [];
+  const companies = Array.isArray(companiesData) ? companiesData : [];
+  const rankingsCount = resumes.reduce((acc, res) => {
+    const rj = typeof res.rankings === 'string' ? JSON.parse(res.rankings || '[]') : res.rankings || [];
+    return acc + (Array.isArray(rj) ? rj.length : 0);
+  }, 0);
+  
+  const stats = { resumes: resumes.length, companies: companies.length, rankings: rankingsCount };
+
+  const ACCEPTED_EXTENSIONS = ['.pdf', '.docx', '.doc'];
+  const MAX_FILE_SIZE_BYTES = 10 * 1024 * 1024;
+
   const handleFile = async (file) => {
-    if (!file || file.type !== 'application/pdf') {
-      alert('Please upload a PDF file.');
+    if (!file) return;
+    const ext = file.name.slice(file.name.lastIndexOf('.')).toLowerCase();
+    if (!ACCEPTED_EXTENSIONS.includes(ext)) {
+      alert('Please upload a PDF or DOCX file.');
+      return;
+    }
+    if (file.size > MAX_FILE_SIZE_BYTES) {
+      alert('File is too large. Max size is 10MB.');
       return;
     }
     setUploadedFile(file);
@@ -92,12 +120,53 @@ const Dashboard = () => {
     formData.append('resume', file);
 
     try {
-      setTimeout(() => setUploadStep(2), 800);
-      setTimeout(() => setUploadStep(3), 1800);
-      const res = await fetch('http://127.0.0.1:5000/api/resumes/', { method: 'POST', body: formData });
-      if (res.ok) {
-        setUploadStep(4);
-        setUploadStatus('done');
+      const res = await uploadResume(formData);
+      if (res.status === 200 || res.status === 201) {
+        const jobId = res.data.job_id;
+        const MAX_POLL_ATTEMPTS = 100; // ~5 minutes at 3s intervals
+
+        const pollStatus = async (attempt = 0) => {
+          if (!isMountedRef.current) return;
+          if (attempt >= MAX_POLL_ATTEMPTS) {
+            setUploadStatus('idle');
+            setUploadStep(0);
+            alert('Upload is taking too long. Please try again later.');
+            return;
+          }
+          try {
+            const statusRes = await getUploadStatus(jobId);
+            if (!isMountedRef.current) return;
+            const { status, step, error } = statusRes.data;
+
+            if (status === 'completed') {
+               setUploadStep(4);
+               setUploadStatus('done');
+               // Add a tiny delay so user sees the 'done' state before navigating
+               pollTimeoutRef.current = setTimeout(() => {
+                 navigate(`/resumes/${statusRes.data.resume_id}`);
+               }, 1000);
+            } else if (status === 'error') {
+               setUploadStatus('idle');
+               setUploadStep(0);
+               alert('Upload failed: ' + error);
+            } else {
+               if (step === 'Parsing resume with AI...') setUploadStep(1);
+               else if (step === 'Generating Embeddings...') setUploadStep(2);
+               else if (step === 'Calculating ATS Score...') setUploadStep(2);
+               else if (step === 'Matching Companies...') setUploadStep(3);
+               else if (step === 'Saving to Database...') setUploadStep(3);
+
+               pollTimeoutRef.current = setTimeout(() => pollStatus(attempt + 1), 3000);
+            }
+          } catch (err) {
+            if (!isMountedRef.current) return;
+            setUploadStatus('idle');
+            setUploadStep(0);
+            alert('Polling failed: ' + err.message);
+          }
+        };
+
+        pollStatus();
       } else {
         setUploadStatus('idle');
         setUploadStep(0);
@@ -106,7 +175,7 @@ const Dashboard = () => {
     } catch (e) {
       setUploadStatus('idle');
       setUploadStep(0);
-      alert('Server error. Make sure the backend is running.');
+      alert('Server error: ' + e.message);
     }
   };
 
@@ -168,11 +237,17 @@ const Dashboard = () => {
                 setDragOver(false);
                 handleFile(e.dataTransfer.files[0]);
               }}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault();
+                  fileInputRef.current?.click();
+                }
+              }}
             >
               <input
                 ref={fileInputRef}
                 type="file"
-                accept=".pdf"
+                accept=".pdf,.docx,.doc"
                 className="hidden"
                 onChange={(e) => handleFile(e.target.files[0])}
               />
@@ -196,7 +271,7 @@ const Dashboard = () => {
                   <p className="text-sm text-on-surface-variant">
                     or <span className="text-tertiary underline underline-offset-4 decoration-tertiary/40">click to browse</span>
                   </p>
-                  <p className="text-xs text-on-surface-variant mt-5">Supports PDF files only (Max 10MB)</p>
+                  <p className="text-xs text-on-surface-variant mt-5">Supports PDF or DOCX files (Max 10MB)</p>
                 </>
               )}
             </div>
@@ -217,7 +292,7 @@ const Dashboard = () => {
                   { s: 4, t: 'Ranked', d: 'Matching with top-tier companies.' },
                 ].map((step, i, arr) => (
                   <React.Fragment key={step.s}>
-                    <UploadStep status={getStepStatus(step.s)} title={step.t} desc={step.d} progress={60} />
+                    <UploadStep status={getStepStatus(step.s)} title={step.t} desc={step.d} />
                     {i < arr.length - 1 && (
                       <div
                         className="w-0.5 h-6 ml-3 rounded-full transition-colors"
@@ -237,6 +312,12 @@ const Dashboard = () => {
           <StatCard icon="domain" label="Total Companies" value={stats.companies.toLocaleString()} />
           <StatCard icon="trending_up" label="Active Rankings" value={stats.rankings.toLocaleString()} />
         </div>
+        
+        {/* Features Section */}
+        <FeaturesSection />
+        
+        {/* Popular Companies Section */}
+        <PopularCompanies />
       </div>
     </div>
   );

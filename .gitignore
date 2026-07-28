@@ -27,3 +27,7 @@ yarn-error.log*
 # Uploaded files
 /server/uploads/*
 !/server/uploads/.gitkeep
+
+# Downloaded ML model cache (HF_HOME/TRANSFORMERS_CACHE) - large binaries,
+# re-downloaded per machine from MODEL_CACHE_DIR in server/.env, never committed.
+/server/assets/models/cache/

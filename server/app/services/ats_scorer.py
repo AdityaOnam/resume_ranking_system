@@ -1,18 +1,10 @@
 import re
-import spacy
 from typing import Dict, Any, List
 import logging
+from app.services.nlp_model import nlp
 from app.services.llm_service import LLMService
 
 logger = logging.getLogger(__name__)
-
-# Re-use the existing spacy model loaded in resume_parser
-try:
-    nlp = spacy.load("en_core_web_sm")
-except OSError:
-    import subprocess, sys
-    subprocess.run([sys.executable, "-m", "spacy", "download", "en_core_web_sm"], check=True)
-    nlp = spacy.load("en_core_web_sm")
 
 def calculate_general_score(parsed_data: Dict[str, Any], raw_text: str) -> Dict[str, Any]:
     """
@@ -168,15 +160,20 @@ def calculate_general_score(parsed_data: Dict[str, Any], raw_text: str) -> Dict[
     score += keyword_score
     breakdown["keyword_density"] = keyword_score
 
+    llm_svc = LLMService()
+    try:
+        gap_analysis = llm_svc.generate_general_ats_feedback(
+            raw_text, {"score": int(score), "breakdown": breakdown, "feedback": feedback}
+        )
+    except Exception:
+        logger.exception("Failed to generate LLM gap analysis, falling back to empty.")
+        gap_analysis = ""
+
     result = {
         "score": int(score),
         "breakdown": breakdown,
-        "feedback": feedback
+        "feedback": feedback,
+        "gap_analysis": gap_analysis,
     }
-
-    # Generate LLM Gap Analysis
-    llm = LLMService()
-    gap_analysis = llm.generate_general_ats_feedback(raw_text, result)
-    result["gap_analysis"] = gap_analysis
 
     return result
