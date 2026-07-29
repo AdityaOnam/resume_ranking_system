@@ -1,6 +1,9 @@
+import logging
 from app.core.database import supabase
 from app.core.config import settings
 from app.services.company_matcher import CompanyMatcher
+
+logger = logging.getLogger(__name__)
 
 
 def generate_rankings(parsed_resume_data: dict, resume_text: str, companies: list, user_id: str) -> list:
@@ -27,7 +30,7 @@ def generate_rankings(parsed_resume_data: dict, resume_text: str, companies: lis
     try:
         resume_embedding = embedding_engine.generate_resume_embedding(parsed_resume_data)
     except Exception as e:
-        print(f"Failed to generate resume embedding for pre-filtering, skipping pre-filter: {e}")
+        logger.warning(f"Failed to generate resume embedding for pre-filtering, skipping pre-filter: {e}")
 
     # 1. Hard filter + cheap similarity pass for every company
     candidates = []
@@ -55,7 +58,7 @@ def generate_rankings(parsed_resume_data: dict, resume_text: str, companies: lis
                 'similarity': similarity,
             })
         except Exception as e:
-            print(f"Error during hard-filter/pre-filter for company {company.get('name')}: {e}")
+            logger.warning(f"Error during hard-filter/pre-filter for company {company.get('name')}: {e}")
             continue
 
     # 2. Only the top-K most similar ELIGIBLE companies get the expensive
@@ -85,7 +88,7 @@ def generate_rankings(parsed_resume_data: dict, resume_text: str, companies: lis
                 'breakdown': score_data["breakdown"],
             })
         except Exception as e:
-            print(f"Error calculating score for company {company.get('name')}: {e}")
+            logger.warning(f"Error calculating score for company {company.get('name')}: {e}")
             continue
 
     if not new_resume_scores:
@@ -144,6 +147,7 @@ def generate_rankings(parsed_resume_data: dict, resume_text: str, companies: lis
             rankings.append({
                 'company': company_id,
                 'companyName': company.get('name'),
+                'companyRole': company.get('internship_role') or company.get('role'),
                 'score': new_resume_ranking['score'],
                 'rank': new_resume_ranking['rank'],
                 'totalResumes': len(all_scores),
@@ -193,6 +197,6 @@ def generate_rankings(parsed_resume_data: dict, resume_text: str, companies: lis
             for chunk in [ranking_rows_to_upsert[i:i + 100] for i in range(0, len(ranking_rows_to_upsert), 100)]:
                 supabase.table('rankings').upsert(chunk).execute()
         except Exception as rank_err:
-            print(f"Error batch-updating rankings table: {rank_err}")
+            logger.error(f"Error batch-updating rankings table: {rank_err}")
 
     return rankings

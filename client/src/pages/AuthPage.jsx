@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import { motion } from 'framer-motion';
+import { PiEnvelopeSimple, PiEnvelopeOpen, PiSpinnerGap, PiArrowRight } from 'react-icons/pi';
 
 const AuthPage = () => {
   const [step, setStep] = useState('email'); // 'email' | 'sent'
@@ -59,76 +59,72 @@ const AuthPage = () => {
   };
 
   return (
-    <div className="min-h-[calc(100vh-64px)] flex items-center justify-center p-4 bg-background">
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="w-full max-w-md bg-surface p-8 rounded-2xl border border-outline-variant shadow-xl"
-      >
-        <div className="text-center mb-8">
-          <h2 className="text-3xl font-bold font-display text-on-surface">
-            {step === 'email' ? 'Welcome' : 'Check your email'}
-          </h2>
-          <p className="text-on-surface-variant mt-2 text-sm">
+    <div className="min-h-[calc(100vh-64px)] flex items-center justify-center p-4 bg-bg">
+      <div className="w-full max-w-[420px] bg-surface p-8 rounded-xl border border-line" style={{ boxShadow: 'var(--rr-shadow)' }}>
+        <div className="text-center flex flex-col gap-1.5 mb-8">
+          <h1 className="m-0 text-2xl tracking-[-0.02em] font-display text-text">
+            {step === 'email' ? 'Welcome to ResumeRanker' : 'Check your email'}
+          </h1>
+          <p className="m-0 text-[13.5px] leading-[1.5] text-muted">
             {step === 'email'
-              ? "No password needed — we'll email you a sign-in link"
-              : `We sent a sign-in link to ${email}. Open it on this device to continue.`}
+              ? "No password needed — we'll email you a sign-in link."
+              : `We sent a sign-in link to ${email}.`}
           </p>
         </div>
 
         {error && (
-          <div className="bg-error/10 border border-error/20 text-error p-4 rounded-xl mb-6 text-sm">
+          <div className="bg-error/10 border border-error/20 text-error p-4 rounded-lg mb-5 text-sm">
             {error}
           </div>
         )}
 
         {step === 'email' ? (
-          <form onSubmit={handleSendLink} className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-on-surface-variant mb-1.5">Email</label>
+          <form onSubmit={handleSendLink} className="flex flex-col gap-3.5">
+            <label className="flex flex-col gap-1.5">
+              <span className="text-[11px] tracking-[0.08em] uppercase text-muted">Email</span>
               <div className="relative">
-                <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant text-[20px]">mail</span>
+                <PiEnvelopeSimple className="absolute left-3.5 top-1/2 -translate-y-1/2 text-muted" size={20} />
                 <input
                   type="email"
                   required
                   autoFocus
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="w-full bg-surface-container-high border border-outline-variant rounded-xl py-3 pl-11 pr-4 text-on-surface placeholder:text-on-surface-variant focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-colors"
+                  className="w-full h-11 bg-surface-2 border border-line rounded-md pl-11 pr-4 text-text placeholder:text-muted focus:outline-none focus:border-accent transition-colors text-sm"
                   placeholder="you@example.com"
                 />
               </div>
-            </div>
+            </label>
 
             <button
               type="submit"
-              disabled={loading || !email}
-              className="w-full flex items-center justify-center gap-2 btn-primary py-3 rounded-xl font-medium disabled:opacity-50 mt-6"
+              disabled={loading || !email.trim()}
+              className="w-full flex items-center justify-center gap-2 h-11 mt-2 bg-accent text-bg rounded-md font-sans font-medium text-sm transition-opacity disabled:opacity-50 hover:opacity-90"
             >
               {loading ? (
-                <span className="material-symbols-outlined animate-spin text-[20px]">progress_activity</span>
+                <PiSpinnerGap className="animate-spin" size={20} />
               ) : (
                 <>
                   Send sign-in link
-                  <span className="material-symbols-outlined text-[18px]">arrow_forward</span>
+                  <PiArrowRight size={18} />
                 </>
               )}
             </button>
 
             <div className="flex items-center gap-3 my-2">
-              <div className="flex-1 h-px bg-outline-variant" />
-              <span className="text-xs text-on-surface-variant uppercase tracking-wider">or</span>
-              <div className="flex-1 h-px bg-outline-variant" />
+              <div className="flex-1 h-px bg-line" />
+              <span className="text-[11px] text-muted uppercase tracking-wider">or</span>
+              <div className="flex-1 h-px bg-line" />
             </div>
 
             <button
               type="button"
               onClick={handleGoogle}
               disabled={googleLoading}
-              className="w-full flex items-center justify-center gap-2.5 bg-surface-container-high border border-outline-variant hover:border-outline text-on-surface py-3 rounded-xl font-medium transition-colors disabled:opacity-50"
+              className="w-full flex items-center justify-center gap-2.5 bg-surface border border-line text-text h-11 rounded-md font-medium text-sm transition-colors hover:border-accent disabled:opacity-50"
             >
               {googleLoading ? (
-                <span className="material-symbols-outlined animate-spin text-[20px]">progress_activity</span>
+                <PiSpinnerGap className="animate-spin" size={20} />
               ) : (
                 <>
                   <svg width="18" height="18" viewBox="0 0 18 18" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
@@ -143,27 +139,27 @@ const AuthPage = () => {
             </button>
           </form>
         ) : (
-          <div className="space-y-4">
-            <div className="flex justify-center py-4">
-              <span className="material-symbols-outlined text-[48px] text-primary">mark_email_read</span>
+          <div className="flex flex-col gap-4">
+            <div className="flex justify-center py-2">
+              <PiEnvelopeOpen size={48} className="text-accent" />
             </div>
 
             <div className="flex justify-between items-center pt-2 text-sm">
-              <button type="button" onClick={changeEmail} className="text-on-surface-variant hover:text-on-surface transition-colors">
+              <button type="button" onClick={changeEmail} className="text-muted hover:text-text transition-colors">
                 Use a different email
               </button>
               <button
                 type="button"
                 onClick={handleResend}
                 disabled={resending}
-                className="text-primary hover:text-primary/80 font-medium transition-colors disabled:opacity-50"
+                className="text-accent hover:opacity-80 font-medium transition-colors disabled:opacity-50"
               >
                 {resending ? 'Resending…' : 'Resend link'}
               </button>
             </div>
           </div>
         )}
-      </motion.div>
+      </div>
     </div>
   );
 };

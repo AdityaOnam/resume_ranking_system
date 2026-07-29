@@ -166,68 +166,62 @@ def get_ai_insights(current_user: User = Depends(get_current_user)):
     
     return {"insights": insights[:6]}
 
-@router.get("/department-comparison")
-def get_department_comparison(current_user: User = Depends(get_current_user)):
-    """
-    Group resumes by education field/branch, compute avg ATS per group.
-    """
-    resumes_res = supabase.table("resumes").select("ats_score, education").eq("user_id", current_user.id).execute()
-    resumes = resumes_res.data or []
-    
-    dept_scores = {}
-    for r in resumes:
-        edu = _parse_json_field(r.get("education"))
-        field = None
-        for e in edu:
-            field = e.get("field") or e.get("degree")
-            if field: break
-        dept = (field or "Unknown").strip()[:30]  # cap length
-        if dept not in dept_scores:
-            dept_scores[dept] = []
-        dept_scores[dept].append(r.get("ats_score") or 0)
-    
-    result = []
-    for dept, scores in dept_scores.items():
-        result.append({
-            "department": dept,
-            "avg_ats": round(sum(scores) / len(scores), 1),
-            "count": len(scores)
-        })
-    
-    return sorted(result, key=lambda x: x["avg_ats"], reverse=True)
-
 @router.get("/ats-history")
 def get_ats_history(current_user: User = Depends(get_current_user)):
     """
-    Returns the ATS score history for the current user, grouped by week.
-    Used for the ATS trend chart.
+    Returns the ATS score history for the CURRENT candidate identity - the
+    email on this account's most recently uploaded resume - not every
+    distinct candidate this account has ever uploaded. `resumes` rows are
+    keyed by email (one row per candidate, overwritten on re-upload of that
+    same email), so an account that has ever uploaded more than one person's
+    resume would otherwise mix unrelated people's scores into one "trend",
+    e.g. a flat plateau from candidate A followed by a cliff down to
+    candidate B's unrelated, lower score. Used for the ATS trend chart and
+    the Upload History list, which both need one person's real timeline.
     """
+    latest = supabase.table("resumes").select("email").eq("user_id", current_user.id).order("created_at", desc=True).limit(1).execute()
+    if not latest.data:
+        return []
+    latest_email = latest.data[0].get("email")
+
     res = supabase.table("ats_history") \
-        .select("ats_score, created_at, name, email") \
+        .select("resume_id, ats_score, created_at, name, email, original_filename") \
         .eq("user_id", current_user.id) \
+        .eq("email", latest_email) \
         .order("created_at", desc=False) \
         .execute()
     return res.data or []
 
-@router.get("/version-comparison")
-def get_version_comparison(current_user: User = Depends(get_current_user)):
+CATEGORY_META = {
+    "contact_info": {"label": "Contact Info", "max": 15},
+    "formatting_and_ordering": {"label": "Formatting", "max": 20},
+    "quantifiable_metrics": {"label": "Quantifiable Metrics", "max": 25},
+    "action_verbs": {"label": "Action Verbs", "max": 25},
+    "keyword_density": {"label": "Keyword Density", "max": 15},
+}
+
+@router.get("/benchmark")
+def get_benchmark(current_user: User = Depends(get_current_user)):
     """
-    Returns per-candidate ATS score progression (for candidates who uploaded multiple times).
-    Grouped by email, returns list of {name, email, versions: [{ats_score, created_at}]}
+    Computes the top-decile (90th percentile) score per ATS category across
+    every scored resume in the system, so a user's own breakdown can be
+    compared against how the top 10% of resumes actually score - not a
+    stand-in/hardcoded number. Requires auth like every other endpoint, but
+    the aggregate itself intentionally reads across all users' resumes.
     """
-    res = supabase.table("ats_history") \
-        .select("ats_score, created_at, name, email") \
-        .eq("user_id", current_user.id) \
-        .order("created_at", desc=True) \
-        .execute()
-    
-    by_email = {}
-    for row in (res.data or []):
-        email = row["email"]
-        if email not in by_email:
-            by_email[email] = {"name": row["name"], "email": email, "versions": []}
-        by_email[email]["versions"].append({"ats_score": row["ats_score"], "created_at": row["created_at"]})
-    
-    # Only return candidates with multiple versions
-    multi = [v for v in by_email.values() if len(v["versions"]) > 1]
-    return sorted(multi, key=lambda x: len(x["versions"]), reverse=True)
+    res = supabase.table("resumes").select("ats_score, ats_breakdown").execute()
+    rows = res.data or []
+    breakdowns = [r.get("ats_breakdown") for r in rows if isinstance(r.get("ats_breakdown"), dict) and r.get("ats_breakdown")]
+    scores = sorted((r.get("ats_score") or 0 for r in rows if r.get("ats_score") is not None), reverse=True)
+
+    def top_decile(values):
+        if not values:
+            return 0
+        idx = max(0, -(-len(values) // 10) - 1)  # ceil(len * 0.1) - 1, clamped to 0
+        return round(values[idx], 1)
+
+    result = {"overall_top10": top_decile(scores)}
+    for key, meta in CATEGORY_META.items():
+        values = sorted((b.get(key, 0) for b in breakdowns), reverse=True)
+        result[key] = {"label": meta["label"], "max": meta["max"], "top10": top_decile(values)}
+    return result

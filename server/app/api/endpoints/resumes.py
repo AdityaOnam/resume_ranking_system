@@ -3,9 +3,8 @@ from typing import List
 import os
 import uuid
 import datetime
-import traceback
 import logging
-from app.models.resume import ResumeCreate, ResumeInDB, RankingScoreSchema
+from app.models.resume import ResumeInDB
 from app.core.database import supabase
 from app.services.resume_parser import ResumeParser
 from app.services.rank_service import generate_rankings
@@ -79,7 +78,7 @@ def format_projects(parsed_resume):
 
 @router.get("/", response_model=List[dict])
 def get_resumes(current_user: User = Depends(get_current_user)):
-    res = supabase.table("resumes").select("id, name, email, skills, rankings, created_at, ats_score, ats_breakdown, ats_feedback, ats_gap_analysis, raw_text, parsed_data, ats_report").eq("user_id", current_user.id).order("created_at", desc=True).execute()
+    res = supabase.table("resumes").select("id, name, email, skills, rankings, created_at, ats_score, ats_breakdown, ats_feedback, ats_gap_analysis, raw_text, parsed_data, ats_report, original_filename").eq("user_id", current_user.id).order("created_at", desc=True).execute()
     return res.data
 
 @router.get("/status/{job_id}")
@@ -207,6 +206,7 @@ async def process_resume_background(job_id: str, file_path: str, filename: str, 
             "name": final_name,
             "email": contact_info.get("email"),
             "phone": contact_info.get("phone") or "",
+            "original_filename": filename,
             "education": parsed_resume_data.get("education", []),
             "skills": parsed_resume_data.get("skills", []),
             "experience": parsed_resume_data.get("experience", []),
@@ -283,6 +283,7 @@ async def process_resume_background(job_id: str, file_path: str, filename: str, 
                 "name": mapped_resume["name"],
                 "email": mapped_resume["email"],
                 "ats_score": ats_score,
+                "original_filename": filename,
             }).execute()
         except Exception as hist_err:
             logger.warning(f"Failed to write ATS history for job {job_id}: {hist_err}")
@@ -302,7 +303,7 @@ async def process_resume_background(job_id: str, file_path: str, filename: str, 
             }
         )
     except Exception as e:
-        traceback.print_exc()
+        logger.exception(f"Resume processing failed for job {job_id}")
         _update_job(job_id, status="error", error=str(e))
 
 @router.post("/")

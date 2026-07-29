@@ -2,34 +2,66 @@
 @tailwind components;
 @tailwind utilities;
 
-/* ---------------------------------------------------------------------------
-   ResumeRanker — design foundation
-   One coherent dark theme built on the tokens defined in tailwind.config.js.
-   Keep effects restrained: subtle borders, quiet shadows, a single accent.
---------------------------------------------------------------------------- */
-
 @layer base {
+  :root {
+    /* Default is dark theme to match original app state */
+    --rr-bg: #161826;
+    --rr-surface: #1d1f2c;
+    --rr-surface-2: #222534;
+    --rr-line: #2e3140;
+    --rr-line-strong: #42475e;
+    --rr-text: #e9e9ed;
+    --rr-muted: #8e91a1;
+    --rr-accent: #9184d9;
+    --rr-accent-text: #b4a8eb;
+    --rr-tint: rgba(145,132,217,0.10);
+    --rr-tint-strong: rgba(145,132,217,0.18);
+    --rr-shadow: 0 6px 24px rgba(0,0,0,0.45);
+  }
+
+  .light {
+    --rr-bg: #f5f6f8;
+    --rr-surface: #ffffff;
+    --rr-surface-2: #f0f2f5;
+    --rr-line: #e2e4e9;
+    --rr-line-strong: #cdd0d8;
+    --rr-text: #1a1b20;
+    --rr-muted: #686b74;
+    --rr-accent: #796cbf;
+    --rr-accent-text: #5b4e9f;
+    --rr-tint: rgba(121,108,191,0.08);
+    --rr-tint-strong: rgba(121,108,191,0.14);
+    --rr-shadow: 0 6px 24px rgba(41,43,49,0.09);
+  }
+
   html, body, #root {
     height: 100%;
   }
 
   body {
-    @apply bg-background text-on-surface antialiased;
-    font-family: 'Geist', sans-serif;
+    @apply bg-bg text-text antialiased;
+    font-family: 'Inter', sans-serif;
     -webkit-font-smoothing: antialiased;
   }
 
-  h1, h2, h3, h4 {
-    font-family: 'Hanken Grotesk', sans-serif;
+  /* Global focus ring per design spec */
+  :focus-visible {
+    outline: 2px solid var(--rr-accent);
+    outline-offset: 2px;
+  }
+  
+  /* Reset browser default focus outlines */
+  *:focus:not(:focus-visible) {
+    outline: none;
   }
 
   ::selection {
-    background: rgba(108, 99, 255, 0.28);
+    background: var(--rr-tint-strong);
   }
 
   * {
     scrollbar-width: thin;
-    scrollbar-color: #343753 transparent;
+    scrollbar-color: var(--rr-line-strong) transparent;
   }
 
   *::-webkit-scrollbar {
@@ -42,14 +74,14 @@
   }
 
   *::-webkit-scrollbar-thumb {
-    background-color: #2a2d52;
+    background-color: var(--rr-line);
     border-radius: 9999px;
     border: 2px solid transparent;
     background-clip: content-box;
   }
 
   *::-webkit-scrollbar-thumb:hover {
-    background-color: #3d416d;
+    background-color: var(--rr-line-strong);
     background-clip: content-box;
   }
 }
@@ -57,68 +89,66 @@
 @layer components {
   /* Surfaces --------------------------------------------------------------- */
   .card {
-    @apply bg-surface-container-low border border-outline-variant rounded-xl;
+    @apply bg-surface-2 border border-line rounded-xl;
   }
 
   .card-hover {
     @apply transition-colors duration-200;
   }
   .card-hover:hover {
-    border-color: rgba(108, 99, 255, 0.4);
+    border-color: var(--rr-accent);
   }
 
   .panel {
-    @apply bg-surface border border-outline-variant rounded-xl;
-    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+    @apply bg-surface border border-line rounded-xl;
+    box-shadow: var(--rr-shadow);
   }
 
-  /* kept for existing markup — an alias of .panel, minus the neon */
   .cyber-panel {
-    @apply bg-surface border border-outline-variant rounded-xl p-6;
-    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+    @apply bg-surface border border-line rounded-xl p-6;
+    box-shadow: var(--rr-shadow);
   }
 
   /* Chips & tags ----------------------------------------------------------- */
   .chip {
-    @apply inline-flex items-center px-2 py-1 rounded text-[11px] font-mono bg-surface-variant text-on-surface-variant border border-outline-variant/40;
+    @apply inline-flex items-center px-2 py-1 rounded text-[11px] font-mono bg-surface-2 text-text border border-line;
   }
 
   .skill-tag {
     @apply inline-flex items-center rounded-md text-[13px] font-mono;
     padding: 6px 14px;
-    background-color: rgba(108, 99, 255, 0.12);
-    color: #c7c3ff;
-    border: 1px solid rgba(108, 99, 255, 0.22);
+    background-color: var(--rr-tint);
+    color: var(--rr-accent-text);
+    border: 1px solid var(--rr-tint-strong);
   }
 
   /* Navigation ------------------------------------------------------------- */
   .nav-link {
-    @apply flex items-center gap-3 px-4 py-2.5 rounded-lg text-[13px] font-medium text-on-surface-variant transition-colors;
+    @apply flex items-center gap-3 px-4 py-2.5 rounded-lg text-[13px] font-medium text-muted transition-colors;
   }
   .nav-link:hover {
-    @apply text-on-surface;
-    background: rgba(255, 255, 255, 0.04);
+    @apply text-text bg-surface-2;
   }
 
   .nav-link-active {
-    @apply flex items-center gap-3 px-4 py-2.5 rounded-lg text-[13px] font-semibold text-primary;
-    background: rgba(108, 99, 255, 0.1);
-    border: 1px solid rgba(108, 99, 255, 0.2);
+    @apply flex items-center gap-3 px-4 py-2.5 rounded-lg text-[13px] font-semibold text-accent;
+    background-color: var(--rr-tint);
+    border: 1px solid var(--rr-tint-strong);
   }
 
   /* Buttons ---------------------------------------------------------------- */
   .btn-primary {
-    @apply inline-flex items-center justify-center gap-2 bg-primary text-white px-5 py-2.5 rounded-lg text-sm font-medium transition-colors;
+    @apply inline-flex items-center justify-center gap-2 bg-accent text-bg px-5 py-2.5 rounded-lg text-sm font-medium transition-colors;
   }
   .btn-primary:hover {
-    background: #5b52f0;
+    filter: brightness(1.1);
   }
 
   .btn-ghost {
-    @apply inline-flex items-center justify-center gap-2 bg-surface border border-outline-variant text-on-surface-variant px-4 py-2.5 rounded-lg text-sm font-medium transition-colors;
+    @apply inline-flex items-center justify-center gap-2 bg-surface border border-line text-text px-4 py-2.5 rounded-lg text-sm font-medium transition-colors;
   }
   .btn-ghost:hover {
-    @apply text-on-surface border-primary/40;
+    @apply border-accent;
   }
 
   /* Score badges ----------------------------------------------------------- */
@@ -143,8 +173,4 @@
     color: #fb7185;
   }
 
-  /* Material Symbols default weight */
-  .material-symbols-outlined {
-    font-variation-settings: 'FILL' 0, 'wght' 300, 'GRAD' 0, 'opsz' 20;
-  }
 }
