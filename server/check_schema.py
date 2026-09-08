@@ -1,13 +1,8 @@
 import psycopg2
+from app.core.config import get_pg_connection_kwargs
 
 try:
-    conn = psycopg2.connect(
-        host='db.lvraaokughgsnocpwlgu.supabase.co',
-        port=5432,
-        dbname='postgres',
-        user='postgres',
-        password='p6ApS_.Q,2.qB.H'
-    )
+    conn = psycopg2.connect(**get_pg_connection_kwargs())
     cur = conn.cursor()
     cur.execute("SELECT column_name FROM information_schema.columns WHERE table_name = 'companies'")
     rows = cur.fetchall()

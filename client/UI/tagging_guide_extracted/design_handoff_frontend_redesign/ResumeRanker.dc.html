@@ -1,0 +1,1429 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="stylesheet" href="_ds/nocturne-a2158e90-22c4-4da7-bef8-bd4ca8b6687b/styles.css">
+<script src="_ds/nocturne-a2158e90-22c4-4da7-bef8-bd4ca8b6687b/_ds_bundle.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://unpkg.com/@phosphor-icons/web@2.1.1"></script>
+<style>
+  html, body { margin: 0; background: var(--color-bg); }
+  .rr {
+    --rr-bg: var(--color-bg);
+    --rr-surface: #1d1f2c;
+    --rr-surface-2: var(--color-surface);
+    --rr-line: #2e3140;
+    --rr-line-strong: var(--color-neutral-800);
+    --rr-text: var(--color-text);
+    --rr-muted: var(--color-neutral-500);
+    --rr-accent: var(--color-accent);
+    --rr-accent-text: var(--color-accent-300);
+    --rr-tint: rgba(145,132,217,0.10);
+    --rr-tint-strong: rgba(145,132,217,0.18);
+    --rr-shadow: 0 6px 24px rgba(0,0,0,0.45);
+  }
+  .rr[data-t="light"] {
+    --rr-bg: var(--color-neutral-100);
+    --rr-surface: #fbfcff;
+    --rr-surface-2: #f7f8fd;
+    --rr-line: var(--color-neutral-200);
+    --rr-line-strong: var(--color-neutral-300);
+    --rr-text: var(--color-neutral-900);
+    --rr-muted: var(--color-neutral-600);
+    --rr-accent: var(--color-accent-600);
+    --rr-accent-text: var(--color-accent-700);
+    --rr-tint: rgba(121,108,191,0.08);
+    --rr-tint-strong: rgba(121,108,191,0.14);
+    --rr-shadow: 0 6px 24px rgba(41,43,49,0.09);
+  }
+  [hidden] { display: none !important; }
+  @keyframes rr-pulse { 0%,100% { opacity: 1 } 50% { opacity: .35 } }
+  @keyframes rr-sweep { 0% { transform: translateX(-100%) } 100% { transform: translateX(100%) } }
+  @keyframes rr-rise { from { opacity: 0; transform: translateY(8px) } to { opacity: 1; transform: none } }
+  @keyframes rr-tick { 0% { opacity: 0; transform: translateY(6px) } 12%, 88% { opacity: 1; transform: none } 100% { opacity: 0; transform: translateY(-6px) } }
+  @keyframes rr-halo { 0%,100% { opacity: .5; transform: scale(1) } 50% { opacity: .95; transform: scale(1.08) } }
+  @keyframes rr-tick2 { 0% { opacity: 0; transform: translateY(6px) } 12%, 88% { opacity: 1; transform: none } 100% { opacity: 0; transform: translateY(-6px) } }
+  @keyframes rr-float { 0%,100% { transform: translate3d(0,0,0) } 50% { transform: translate3d(0,-10px,0) } }
+  @keyframes rr-float-2 { 0%,100% { transform: translate3d(0,4px,0) } 50% { transform: translate3d(0,-8px,0) } }
+  .rr *:focus-visible { outline: 2px solid var(--rr-accent); outline-offset: 2px; }
+  .rr a { color: var(--rr-accent-text); text-decoration: none; }
+  .rr a:hover { color: var(--rr-accent); }
+</style>
+</helmet>
+<div class="rr" data-t="{{ theme }}" style="min-height: 100vh; background: var(--rr-bg); color: var(--rr-text); font-family: var(--font-body); font-size: 15px; transition: background 200ms ease, color 200ms ease;">
+
+  <header hidden="{{ hideHeader }}" style="position: sticky; top: 0; z-index: 30; display: flex; align-items: center; justify-content: space-between; gap: 24px; height: 60px; padding: 0 28px; background: var(--rr-bg); border-bottom: 1px solid var(--rr-line);">
+    <div style="display: flex; align-items: center; gap: 40px; min-width: 0;">
+      <div style="display: flex; align-items: center; gap: 10px;">
+        <svg width="24" height="24" viewBox="0 0 28 28" fill="none" aria-label="ResumeRanker" role="img"><path d="M6 16l8-8 8 8" stroke="var(--rr-accent)" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"></path><path d="M6 23l8-8 8 8" stroke="var(--rr-muted)" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+        <span style="font-family: var(--font-heading); font-weight: 500; font-size: 16px; letter-spacing: -0.02em;">ResumeRanker</span>
+      </div>
+      <nav style="display: flex; align-items: center; gap: 4px; flex-shrink: 0; white-space: nowrap;">
+        <button type="button" onClick="{{ goUpload }}" style="{{ navUploadStyle }}">
+          <i class="ph ph-cloud-arrow-up" style="font-size: 16px;"></i>Upload
+        </button>
+        <button type="button" onClick="{{ goCompanies }}" style="{{ navCompaniesStyle }}">
+          <i class="ph ph-buildings" style="font-size: 16px;"></i>Companies
+        </button>
+        <button type="button" onClick="{{ goAts }}" style="{{ navAtsStyle }}">
+          <i class="ph ph-chart-line" style="font-size: 16px;"></i>ATS Dashboard
+        </button>
+        
+      </nav>
+    </div>
+
+    <div hidden="{{ hideLoggedOut }}">
+      <button type="button" onClick="{{ goLogin }}" style="height: 34px; padding: 0 15px; border: 1px solid var(--rr-accent); border-radius: var(--radius-md); background: transparent; color: var(--rr-accent); font-family: var(--font-heading); font-weight: 500; font-size: 13px; cursor: pointer;" style-hover="background: var(--rr-tint)">Sign in</button>
+    </div>
+
+    <div hidden="{{ hideLoggedIn }}" style="display: flex; align-items: center; gap: 8px; position: relative;">
+      <button type="button" onClick="{{ toggleTheme }}" title="Toggle light / dark" style="display: flex; align-items: center; gap: 6px; height: 32px; padding: 0 10px; border: 1px solid var(--rr-line-strong); border-radius: 999px; background: transparent; color: var(--rr-muted); cursor: pointer; font-size: 12px; font-family: var(--font-heading); white-space: nowrap;" style-hover="border-color: var(--rr-accent); color: var(--rr-accent)">
+        <i class="{{ themeIcon }}" style="font-size: 15px;"></i>{{ themeLabel }}
+      </button>
+
+      <div style="position: relative;">
+        <button type="button" onClick="{{ toggleNotif }}" aria-label="Notifications" style="position: relative; width: 32px; height: 32px; border: 0; border-radius: 999px; background: transparent; color: var(--rr-muted); cursor: pointer;" style-hover="background: var(--rr-tint); color: var(--rr-text)">
+          <i class="ph ph-bell" style="font-size: 17px;"></i>
+          <span style="position: absolute; top: 6px; right: 7px; width: 5px; height: 5px; border-radius: 999px; background: var(--rr-accent);"></span>
+        </button>
+        <div hidden="{{ hideNotif }}" style="position: absolute; top: 40px; right: 0; width: 300px; border: 1px solid var(--rr-line-strong); border-radius: var(--radius-lg); background: var(--rr-surface); box-shadow: var(--rr-shadow); z-index: 50; overflow: hidden;">
+          <div style="padding: 12px 16px; border-bottom: 1px solid var(--rr-line); font-family: var(--font-heading); font-size: 13px;">Notifications</div>
+          <sc-for list="{{ notifications }}" as="n" hint-placeholder-count="3">
+            <div style="display: flex; gap: 10px; padding: 12px 16px; border-bottom: 1px solid var(--rr-line);">
+              <i class="{{ n.icon }}" style="font-size: 16px; color: var(--rr-accent); flex-shrink: 0; margin-top: 1px;"></i>
+              <div style="min-width: 0;">
+                <div style="font-size: 13px; line-height: 1.45;">{{ n.text }}</div>
+                <div style="font-size: 11px; color: var(--rr-muted); margin-top: 3px;">{{ n.time }}</div>
+              </div>
+            </div>
+          </sc-for>
+        </div>
+      </div>
+
+      <button type="button" id="user-avatar-btn" onClick="{{ toggleProfile }}" style="width: 30px; height: 30px; border: 1px solid var(--rr-line-strong); border-radius: 999px; background: var(--rr-tint); color: var(--rr-accent-text); font-family: var(--font-heading); font-weight: 500; font-size: 13px; cursor: pointer;" style-hover="border-color: var(--rr-accent)">A</button>
+      <div hidden="{{ hideProfile }}" style="position: absolute; top: 40px; right: 0; width: 280px; border: 1px solid var(--rr-line-strong); border-radius: var(--radius-lg); background: var(--rr-surface); box-shadow: var(--rr-shadow); z-index: 50; overflow: hidden;">
+        <div style="height: 56px; background: linear-gradient(135deg, var(--rr-tint-strong), transparent);"></div>
+        <div style="padding: 0 18px 16px; margin-top: -28px;">
+          <div style="width: 52px; height: 52px; border-radius: 999px; border: 3px solid var(--rr-surface); background: var(--rr-accent); color: #fff; display: flex; align-items: center; justify-content: center; font-family: var(--font-heading); font-size: 20px;">A</div>
+          <div style="margin-top: 10px;">
+            <div style="font-family: var(--font-heading); font-size: 15px;">Aditya Verma</div>
+            <div style="font-size: 12.5px; color: var(--rr-muted);">aditya.verma@iitr.ac.in</div>
+          </div>
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 14px;">
+            <div style="border: 1px solid var(--rr-line); border-radius: var(--radius-md); padding: 10px; text-align: center;">
+              <div style="font-size: 10.5px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--rr-muted);">Current ATS</div>
+              <div style="font-family: var(--font-heading); font-size: 20px; margin-top: 3px;">78</div>
+            </div>
+            <div style="border: 1px solid var(--rr-line); border-radius: var(--radius-md); padding: 10px; text-align: center;">
+              <div style="font-size: 10.5px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--rr-muted);">Best match</div>
+              <div style="font-family: var(--font-heading); font-size: 20px; margin-top: 3px;">91%</div>
+            </div>
+          </div>
+          <button type="button" onClick="{{ signOut }}" style="width: 100%; margin-top: 14px; display: flex; align-items: center; gap: 8px; height: 34px; padding: 0 10px; border: 1px solid var(--rr-line-strong); border-radius: var(--radius-md); background: transparent; color: var(--rr-muted); font-family: var(--font-heading); font-size: 13px; cursor: pointer;" style-hover="border-color: var(--rr-accent); color: var(--rr-accent)"><i class="ph ph-sign-out" style="font-size: 15px;"></i>Sign out</button>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <main hidden="{{ hideLanding }}" style="display: flex; flex-direction: column;">
+    <div style="max-width: 1180px; width: 100%; margin: 0 auto; padding: 36px 28px 0; display: flex; align-items: center; justify-content: space-between;">
+      <div style="display: flex; align-items: center; gap: 12px; perspective: 600px;">
+        <svg width="30" height="30" viewBox="0 0 28 28" fill="none" aria-label="ResumeRanker" role="img" style="transform: rotateX(16deg) rotateY(-12deg); filter: drop-shadow(0 5px 8px rgba(0,0,0,0.4));"><path d="M6 16l8-8 8 8" stroke="var(--rr-accent)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"></path><path d="M6 23l8-8 8 8" stroke="var(--rr-muted)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+        <span style="font-family: var(--font-heading); font-weight: 500; font-size: 19px; letter-spacing: -0.02em;">ResumeRanker</span>
+      </div>
+      <button type="button" onClick="{{ goLogin }}" style="height: 34px; padding: 0 15px; border: 1px solid var(--rr-line-strong); border-radius: var(--radius-md); background: transparent; color: var(--rr-text); font-family: var(--font-heading); font-weight: 500; font-size: 13px; cursor: pointer;" style-hover="border-color: var(--rr-accent); color: var(--rr-accent)">Sign in</button>
+    </div>
+    <section style="max-width: 1180px; margin: 0 auto; padding: 60px 28px 70px; display: grid; grid-template-columns: 1.05fr 1fr; gap: 48px; align-items: center;">
+      <div style="display: flex; flex-direction: column; gap: 22px;">
+        <div style="display: flex; align-items: center; gap: 8px; font-size: 11px; letter-spacing: 0.10em; text-transform: uppercase; color: var(--rr-muted);">
+          <span style="width: 18px; height: 1px; background: var(--rr-accent);"></span>For final-year engineering students
+        </div>
+        <h1 style="margin: 0; font-size: 52px; line-height: 1.06; letter-spacing: -0.03em; max-width: 14ch; text-wrap: pretty;">Know exactly which companies your resume already fits.</h1>
+        <p style="margin: 0; max-width: 46ch; font-size: 16px; line-height: 1.65; color: var(--rr-muted);">Upload once. We parse it, score it against real ATS criteria, and rank you against every open role in the index — with the exact gaps standing between you and the next tier.</p>
+        <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
+          <button type="button" onClick="{{ goLogin }}" style="height: 44px; padding: 0 22px; border: 1px solid var(--rr-accent); border-radius: var(--radius-md); background: var(--rr-accent); color: #14121f; font-family: var(--font-heading); font-weight: 500; font-size: 14px; cursor: pointer; display: flex; align-items: center; gap: 8px;" style-hover="opacity: 0.9">Sign in to get started<i class="ph ph-arrow-right" style="font-size: 16px;"></i></button>
+        </div>
+        <div style="display: flex; align-items: center; gap: 22px; font-size: 12.5px; color: var(--rr-muted); padding-top: 6px;">
+          <span><strong style="color: var(--rr-text); font-family: var(--font-heading); font-weight: 500;">{{ statResumes }}</strong> resumes scored</span>
+          <span><strong style="color: var(--rr-text); font-family: var(--font-heading); font-weight: 500;">{{ statCompanies }}</strong> companies indexed</span>
+          <span><strong style="color: var(--rr-text); font-family: var(--font-heading); font-weight: 500;">{{ statSeconds }}s</strong> median turnaround</span>
+        </div>
+        <div style="display: flex; align-items: center; gap: 9px; height: 22px; font-size: 12.5px; color: var(--rr-muted); overflow: hidden;">
+          <span style="position: relative; display: flex; width: 7px; height: 7px; flex-shrink: 0;">
+            <span style="position: absolute; inset: -3px; border-radius: 999px; background: var(--rr-tint-strong); animation: rr-halo 1.8s ease-in-out infinite;"></span>
+            <span style="width: 7px; height: 7px; border-radius: 999px; background: var(--rr-accent);"></span>
+          </span>
+          <span style="{{ tickerStyle }}">{{ tickerText }}</span>
+        </div>
+      </div>
+
+      <div style="display: flex; flex-direction: column; gap: 14px;">
+        <div style="display: flex; flex-wrap: wrap; gap: 6px; justify-content: flex-end;">
+          <sc-for list="{{ landChips }}" as="chip" hint-placeholder-count="4">
+            <button type="button" onClick="{{ chip.pick }}" style="{{ chip.style }}">{{ chip.name }}</button>
+          </sc-for>
+        </div>
+        <div onMouseMove="{{ onStage }}" onMouseLeave="{{ offStage }}" style="position: relative; height: 430px; perspective: 1500px;">
+          <div style="{{ stageStyle }}">
+            <div style="position: absolute; left: 30px; top: 60px; width: 300px; height: 260px; border-radius: 40px; background: radial-gradient(closest-side, var(--rr-tint-strong), transparent 75%); transform: translateZ(-200px);"></div>
+
+            <sc-for list="{{ landStack }}" as="card" hint-placeholder-count="4">
+              <div onClick="{{ card.pick }}" style="{{ card.style }}">
+                <div style="display: flex; align-items: baseline; justify-content: space-between; gap: 10px;">
+                  <span style="font-family: var(--font-heading); font-size: 14px;">{{ card.name }}</span>
+                  <span style="font-size: 10.5px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--rr-muted);">Match</span>
+                </div>
+                <div style="font-size: 11.5px; color: var(--rr-muted);">{{ card.role }}</div>
+                <div style="display: flex; align-items: center; gap: 16px; margin-top: 4px;">
+                  <div style="{{ card.ringStyle }}">
+                    <div style="position: absolute; inset: 5px; border-radius: 999px; background: var(--rr-surface); display: flex; align-items: center; justify-content: center; font-family: var(--font-heading); font-size: 19px; letter-spacing: -0.02em; font-variant-numeric: tabular-nums;">{{ card.score }}</div>
+                  </div>
+                  <div style="flex: 1; display: flex; flex-direction: column; gap: 8px;">
+                    <sc-for list="{{ card.rows }}" as="row" hint-placeholder-count="3">
+                      <div>
+                        <div style="display: flex; justify-content: space-between; font-size: 11px; color: var(--rr-muted); margin-bottom: 4px;"><span>{{ row.label }}</span><span style="font-variant-numeric: tabular-nums;">{{ row.value }}</span></div>
+                        <div style="height: 3px; border-radius: 999px; background: var(--rr-line-strong); overflow: hidden;"><div style="{{ row.fillStyle }}"></div></div>
+                      </div>
+                    </sc-for>
+                  </div>
+                </div>
+                <div style="border-top: 1px solid var(--rr-line); padding-top: 11px; margin-top: 2px; font-size: 12px; color: var(--rr-muted); line-height: 1.5;">{{ card.note }}</div>
+              </div>
+            </sc-for>
+
+            <div style="{{ floatGapStyle }}">
+              <span style="font-size: 10.5px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--rr-muted);">Top gap</span>
+              <span style="font-size: 12px;">{{ landGap }}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section style="max-width: 1180px; margin: 0 auto; padding: 0 28px 88px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px;">
+      <div style="border: 1px solid var(--rr-line); border-radius: var(--radius-lg); background: var(--rr-surface); padding: 24px; display: flex; flex-direction: column; gap: 12px; transition: transform 200ms ease, border-color 200ms ease, box-shadow 200ms ease;" style-hover="transform: perspective(800px) rotateX(5deg) translateY(-6px); border-color: var(--rr-accent); box-shadow: var(--rr-shadow)">
+        <i class="ph ph-file-magnifying-glass" style="font-size: 24px; color: var(--rr-accent);"></i>
+        <h3 style="margin: 0; font-size: 17px;">One upload, every company</h3>
+        <p style="margin: 0; font-size: 13.5px; line-height: 1.6; color: var(--rr-muted);">Parse once, get scored against 96 job descriptions at once — no separate applications to tailor.</p>
+      </div>
+      <div style="border: 1px solid var(--rr-line); border-radius: var(--radius-lg); background: var(--rr-surface); padding: 24px; display: flex; flex-direction: column; gap: 12px; transition: transform 200ms ease, border-color 200ms ease, box-shadow 200ms ease;" style-hover="transform: perspective(800px) rotateX(5deg) translateY(-6px); border-color: var(--rr-accent); box-shadow: var(--rr-shadow)">
+        <i class="ph ph-query" style="font-size: 24px; color: var(--rr-accent);"></i>
+        <h3 style="margin: 0; font-size: 17px;">Real ATS scoring</h3>
+        <p style="margin: 0; font-size: 13.5px; line-height: 1.6; color: var(--rr-muted);">The same five categories applicant-tracking systems check — contact info, formatting, quantified impact, verbs and keywords.</p>
+      </div>
+      <div style="border: 1px solid var(--rr-line); border-radius: var(--radius-lg); background: var(--rr-surface); padding: 24px; display: flex; flex-direction: column; gap: 12px; transition: transform 200ms ease, border-color 200ms ease, box-shadow 200ms ease;" style-hover="transform: perspective(800px) rotateX(5deg) translateY(-6px); border-color: var(--rr-accent); box-shadow: var(--rr-shadow)">
+        <i class="ph ph-sparkle" style="font-size: 24px; color: var(--rr-accent);"></i>
+        <h3 style="margin: 0; font-size: 17px;">Told what to fix</h3>
+        <p style="margin: 0; font-size: 13.5px; line-height: 1.6; color: var(--rr-muted);">Every match comes with the specific skills and phrasing gaps holding your score back — not just a number.</p>
+      </div>
+    </section>
+
+    <section style="background: var(--rr-tint); border-top: 1px solid var(--rr-line); border-bottom: 1px solid var(--rr-line);">
+      <div style="max-width: 1180px; margin: 0 auto; padding: 56px 28px; display: flex; align-items: center; justify-content: space-between; gap: 24px; flex-wrap: wrap;">
+        <div>
+          <h2 style="margin: 0; font-size: 26px; letter-spacing: -0.02em;">Ready to see your matches?</h2>
+          <p style="margin: 6px 0 0; font-size: 14px; color: var(--rr-muted);">Sign in and upload a resume — results in under a minute.</p>
+        </div>
+        <button type="button" onClick="{{ goLogin }}" style="height: 44px; padding: 0 22px; border: 1px solid var(--rr-accent); border-radius: var(--radius-md); background: var(--rr-accent); color: #14121f; font-family: var(--font-heading); font-weight: 500; font-size: 14px; cursor: pointer; white-space: nowrap;" style-hover="opacity: 0.9">Sign in to get started</button>
+      </div>
+    </section>
+  </main>
+
+  <main hidden="{{ hideAuth }}" style="max-width: 420px; margin: 60px auto; padding: 0 20px;">
+    <div style="border: 1px solid var(--rr-line); border-radius: var(--radius-lg); background: var(--rr-surface); box-shadow: var(--rr-shadow); padding: 32px 28px; display: flex; flex-direction: column; gap: 20px;">
+      <div style="text-align: center; display: flex; flex-direction: column; gap: 6px;">
+        <h1 style="margin: 0; font-size: 24px; letter-spacing: -0.02em;">{{ authTitle }}</h1>
+        <p style="margin: 0; font-size: 13.5px; color: var(--rr-muted); line-height: 1.5;">{{ authSub }}</p>
+      </div>
+
+      <div hidden="{{ hideAuthEmail }}" style="display: flex; flex-direction: column; gap: 14px;">
+        <label style="display: flex; flex-direction: column; gap: 6px;">
+          <span style="font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--rr-muted);">Email</span>
+          <input type="email" value="{{ authEmail }}" onInput="{{ onAuthEmail }}" placeholder="you@example.com" style="height: 40px; padding: 0 13px; border: 1px solid var(--rr-line-strong); border-radius: var(--radius-md); background: var(--rr-surface-2); color: var(--rr-text); font-family: var(--font-body); font-size: 13.5px;">
+        </label>
+        <button type="button" onClick="{{ sendLink }}" style="height: 40px; border: 1px solid var(--rr-accent); border-radius: var(--radius-md); background: var(--rr-accent); color: #14121f; font-family: var(--font-heading); font-weight: 500; font-size: 13.5px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 7px;" style-hover="opacity: 0.9">Send sign-in link<i class="ph ph-arrow-right" style="font-size: 15px;"></i></button>
+        <div style="display: flex; align-items: center; gap: 12px;">
+          <div style="height: 1px; flex: 1; background: var(--rr-line);"></div><span style="font-size: 11px; color: var(--rr-muted); letter-spacing: 0.06em;">OR</span><div style="height: 1px; flex: 1; background: var(--rr-line);"></div>
+        </div>
+        <button type="button" onClick="{{ googleSignIn }}" style="height: 40px; border: 1px solid var(--rr-line-strong); border-radius: var(--radius-md); background: transparent; color: var(--rr-text); font-family: var(--font-heading); font-weight: 500; font-size: 13.5px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 9px;" style-hover="border-color: var(--rr-accent)">
+          <svg width="16" height="16" viewBox="0 0 18 18"><path fill="#4285F4" d="M17.64 9.2c0-.64-.06-1.25-.16-1.84H9v3.48h4.84c-.21 1.13-.84 2.09-1.8 2.73v2.27h2.92c1.7-1.57 2.68-3.88 2.68-6.64z"></path><path fill="#34A853" d="M9 18c2.43 0 4.47-.8 5.96-2.18l-2.92-2.27c-.8.54-1.84.86-3.04.86-2.34 0-4.32-1.58-5.03-3.71H.96v2.33C2.44 15.98 5.48 18 9 18z"></path><path fill="#FBBC05" d="M3.97 10.7c-.18-.54-.28-1.11-.28-1.7s.1-1.16.28-1.7V4.97H.96A8.996 8.996 0 000 9c0 1.45.35 2.83.96 4.03l3.01-2.33z"></path><path fill="#EA4335" d="M9 3.58c1.32 0 2.51.45 3.44 1.35l2.59-2.59C13.46.89 11.43 0 9 0 5.48 0 2.44 2.02.96 4.97l3.01 2.33C4.68 5.16 6.66 3.58 9 3.58z"></path></svg>
+          Continue with Google
+        </button>
+      </div>
+
+      <div hidden="{{ hideAuthSent }}" style="display: flex; flex-direction: column; align-items: center; gap: 14px; text-align: center;">
+        <i class="ph ph-envelope-open" style="font-size: 38px; color: var(--rr-accent);"></i>
+        <div style="display: flex; align-items: center; gap: 18px; font-size: 13px;">
+          <button type="button" onClick="{{ changeEmail }}" style="border: 0; background: transparent; color: var(--rr-muted); cursor: pointer; font-family: var(--font-heading);" style-hover="color: var(--rr-text)">Use a different email</button>
+          <button type="button" onClick="{{ resendLink }}" style="border: 0; background: transparent; color: var(--rr-accent-text); cursor: pointer; font-family: var(--font-heading);">Resend link</button>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <main hidden="{{ hideUpload }}" style="max-width: 1180px; margin: 0 auto; padding: 48px 28px 72px; display: flex; flex-direction: column; gap: 64px;">
+
+    <section style="display: grid; grid-template-columns: 1.15fr 1fr; gap: 40px; align-items: start;">
+      <div style="display: flex; flex-direction: column; gap: 24px;">
+        <div style="display: flex; align-items: center; gap: 8px; font-size: 11px; letter-spacing: 0.10em; text-transform: uppercase; color: var(--rr-muted);">
+          <span style="width: 18px; height: 1px; background: var(--rr-accent);"></span>Resume intelligence
+        </div>
+        <h1 style="margin: 0; font-size: 44px; line-height: 1.08; letter-spacing: -0.025em; max-width: 15ch; text-wrap: pretty;">Find the companies your resume already fits.</h1>
+        <p style="margin: 0; max-width: 46ch; color: var(--rr-muted); line-height: 1.6;">Upload once. We parse the document, embed your skills, score it against every open role in the index, and rank the matches — with the gaps spelled out.</p>
+
+        <div role="button" tabindex="0" onClick="{{ startUpload }}" onKeyDown="{{ onDropzoneKey }}" onDragOver="{{ onDragOver }}" onDragLeave="{{ onDragLeave }}" onDrop="{{ onDrop }}" style="{{ dropzoneStyle }}">
+          <div style="width: 46px; height: 46px; border-radius: var(--radius-md); border: 1px solid var(--rr-line-strong); display: flex; align-items: center; justify-content: center; color: var(--rr-accent);">
+            <i class="ph ph-file-arrow-up" style="font-size: 22px;"></i>
+          </div>
+          <div style="display: flex; flex-direction: column; gap: 4px; min-width: 0;">
+            <span style="font-family: var(--font-heading); font-weight: 500; font-size: 15px;">{{ dropTitle }}</span>
+            <span style="font-size: 13px; color: var(--rr-muted);">{{ dropSub }}</span>
+          </div>
+          <div style="margin-left: auto; display: flex; align-items: center; gap: 6px; height: 32px; padding: 0 14px; border: 1px solid var(--rr-accent); border-radius: var(--radius-md); color: var(--rr-accent); font-family: var(--font-heading); font-weight: 500; font-size: 13px; white-space: nowrap;">Browse files</div>
+        </div>
+
+        <div style="display: flex; align-items: center; flex-wrap: wrap; column-gap: 18px; row-gap: 8px; font-size: 12px; color: var(--rr-muted);">
+          <span style="display: flex; align-items: center; gap: 6px; white-space: nowrap;"><i class="ph ph-file-pdf" style="font-size: 14px;"></i>PDF or DOCX</span>
+          <span style="display: flex; align-items: center; gap: 6px; white-space: nowrap;"><i class="ph ph-hard-drives" style="font-size: 14px;"></i>Max 10 MB</span>
+          <span style="display: flex; align-items: center; gap: 6px; white-space: nowrap;"><i class="ph ph-lock-simple" style="font-size: 14px;"></i>Private to your account</span>
+        </div>
+      </div>
+
+      <div style="border: 1px solid var(--rr-line); border-radius: var(--radius-lg); background: var(--rr-surface); box-shadow: var(--rr-shadow); overflow: hidden;">
+        <div style="display: flex; align-items: center; justify-content: space-between; padding: 16px 20px; border-bottom: 1px solid var(--rr-line);">
+          <span style="font-family: var(--font-heading); font-weight: 500; font-size: 13px;">Pipeline</span>
+          <span style="display: flex; align-items: center; gap: 6px; font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--rr-muted);">{{ pipelineLabel }}</span>
+        </div>
+        <div style="padding: 22px 20px 24px; display: flex; flex-direction: column; gap: 2px;">
+          <sc-for list="{{ steps }}" as="step" hint-placeholder-count="4">
+            <div style="display: grid; grid-template-columns: 22px 1fr; gap: 14px;">
+              <div style="display: flex; flex-direction: column; align-items: center; gap: 4px;">
+                <div style="{{ step.dotStyle }}"><i class="{{ step.icon }}" style="font-size: 12px;"></i></div>
+                <div style="{{ step.railStyle }}"></div>
+              </div>
+              <div style="padding-bottom: 18px; opacity: 1;">
+                <div style="{{ step.titleStyle }}">{{ step.title }}</div>
+                <div style="font-size: 13px; color: var(--rr-muted); margin-top: 3px;">{{ step.desc }}</div>
+                <div style="{{ step.barStyle }}"><div style="{{ step.barFillStyle }}"></div></div>
+              </div>
+            </div>
+          </sc-for>
+        </div>
+        <div style="padding: 14px 20px; border-top: 1px solid var(--rr-line); background: var(--rr-surface-2); display: flex; align-items: center; justify-content: space-between; gap: 12px;">
+          <span style="font-size: 12px; color: var(--rr-muted);">{{ footerNote }}</span>
+          <button type="button" hidden="{{ hideViewRanking }}" onClick="{{ viewRanking }}" style="display: flex; align-items: center; gap: 6px; height: 28px; padding: 0 12px; border: 1px solid var(--rr-accent); border-radius: var(--radius-md); background: transparent; color: var(--rr-accent); font-family: var(--font-heading); font-size: 12px; cursor: pointer; margin-left: auto;" style-hover="background: var(--rr-tint)">View ranking<i class="ph ph-arrow-right" style="font-size: 13px;"></i></button>
+          <button type="button" onClick="{{ resetPipeline }}" style="border: 0; background: transparent; color: var(--rr-muted); font-size: 12px; font-family: var(--font-heading); cursor: pointer; display: flex; align-items: center; gap: 5px;" style-hover="color: var(--rr-accent)"><i class="ph ph-arrow-counter-clockwise" style="font-size: 13px;"></i>Reset</button>
+        </div>
+      </div>
+    </section>
+
+    <section style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 1px; background: var(--rr-line); border: 1px solid var(--rr-line); border-radius: var(--radius-lg); overflow: hidden;">
+      <div style="background: var(--rr-surface); padding: 20px 22px; display: flex; flex-direction: column; gap: 6px;">
+        <span style="font-size: 11px; letter-spacing: 0.09em; text-transform: uppercase; color: var(--rr-muted);">Resumes analysed</span>
+        <span style="font-family: var(--font-heading); font-size: 30px; letter-spacing: -0.02em;">1,284</span>
+        <span style="font-size: 12px; color: var(--rr-muted);">+38 this week</span>
+      </div>
+      <div style="background: var(--rr-surface); padding: 20px 22px; display: flex; flex-direction: column; gap: 6px;">
+        <span style="font-size: 11px; letter-spacing: 0.09em; text-transform: uppercase; color: var(--rr-muted);">Companies indexed</span>
+        <span style="font-family: var(--font-heading); font-size: 30px; letter-spacing: -0.02em;">96</span>
+        <span style="font-size: 12px; color: var(--rr-muted);">Across 12 role families</span>
+      </div>
+      <div style="background: var(--rr-surface); padding: 20px 22px; display: flex; flex-direction: column; gap: 6px;">
+        <span style="font-size: 11px; letter-spacing: 0.09em; text-transform: uppercase; color: var(--rr-muted);">Active rankings</span>
+        <span style="font-family: var(--font-heading); font-size: 30px; letter-spacing: -0.02em;">7,412</span>
+        <span style="font-size: 12px; color: var(--rr-muted);">Re-scored nightly</span>
+      </div>
+    </section>
+
+    <section style="display: flex; flex-direction: column; gap: 28px;">
+      <div style="display: flex; align-items: baseline; gap: 16px;">
+        <h2 style="margin: 0; font-size: 24px; letter-spacing: -0.02em;">How it works</h2>
+        <span style="font-size: 13px; color: var(--rr-muted);">Three passes, about forty seconds.</span>
+      </div>
+      <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px;">
+        <div style="border: 1px solid var(--rr-line); border-radius: var(--radius-lg); background: var(--rr-surface); padding: 22px; display: flex; flex-direction: column; gap: 12px;" style-hover="border-color: var(--rr-accent)">
+          <div style="display: flex; align-items: center; justify-content: space-between;">
+            <i class="ph ph-file-magnifying-glass" style="font-size: 22px; color: var(--rr-accent);"></i>
+            <span style="font-family: var(--font-heading); font-size: 12px; color: var(--rr-muted);">01</span>
+          </div>
+          <h3 style="margin: 0; font-size: 17px;">Parse</h3>
+          <p style="margin: 0; font-size: 13px; line-height: 1.6; color: var(--rr-muted);">Layout-agnostic extraction pulls sections, dates, skills and action verbs out of any PDF or DOCX.</p>
+        </div>
+        <div style="border: 1px solid var(--rr-line); border-radius: var(--radius-lg); background: var(--rr-surface); padding: 22px; display: flex; flex-direction: column; gap: 12px;" style-hover="border-color: var(--rr-accent)">
+          <div style="display: flex; align-items: center; justify-content: space-between;">
+            <i class="ph ph-graph" style="font-size: 22px; color: var(--rr-accent);"></i>
+            <span style="font-family: var(--font-heading); font-size: 12px; color: var(--rr-muted);">02</span>
+          </div>
+          <h3 style="margin: 0; font-size: 17px;">Embed &amp; score</h3>
+          <p style="margin: 0; font-size: 13px; line-height: 1.6; color: var(--rr-muted);">Your document and every job description share one vector space, so matching survives wording differences.</p>
+        </div>
+        <div style="border: 1px solid var(--rr-line); border-radius: var(--radius-lg); background: var(--rr-surface); padding: 22px; display: flex; flex-direction: column; gap: 12px;" style-hover="border-color: var(--rr-accent)">
+          <div style="display: flex; align-items: center; justify-content: space-between;">
+            <i class="ph ph-ranking" style="font-size: 22px; color: var(--rr-accent);"></i>
+            <span style="font-family: var(--font-heading); font-size: 12px; color: var(--rr-muted);">03</span>
+          </div>
+          <h3 style="margin: 0; font-size: 17px;">Rank &amp; explain</h3>
+          <p style="margin: 0; font-size: 13px; line-height: 1.6; color: var(--rr-muted);">Each match comes with an ATS score, the weight breakdown behind it, and the exact skills you are missing.</p>
+        </div>
+      </div>
+    </section>
+
+    <section style="display: flex; flex-direction: column; gap: 20px;">
+      <div style="display: flex; align-items: baseline; justify-content: space-between; gap: 16px;">
+        <h2 style="margin: 0; font-size: 24px; letter-spacing: -0.02em;">Popular companies</h2>
+        <a href="#companies" style="font-size: 13px; font-family: var(--font-heading);">View all 96</a>
+      </div>
+      <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px;">
+        <sc-for list="{{ companies }}" as="co" hint-placeholder-count="8">
+          <div style="display: flex; align-items: center; gap: 12px; border: 1px solid var(--rr-line); border-radius: var(--radius-md); background: var(--rr-surface); padding: 14px 16px; cursor: pointer;" style-hover="border-color: var(--rr-accent)">
+            <div style="width: 32px; height: 32px; border-radius: var(--radius-sm); background: #fbfcff; border: 1px solid var(--rr-line); display: flex; align-items: center; justify-content: center; overflow: hidden; flex-shrink: 0;"><div aria-hidden="true" style="{{ co.markStyle }}"></div></div>
+            <div style="min-width: 0; display: flex; flex-direction: column;">
+              <span style="font-family: var(--font-heading); font-weight: 500; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{{ co.name }}</span>
+              <span style="font-size: 11px; color: var(--rr-muted);">{{ co.roles }}</span>
+            </div>
+          </div>
+        </sc-for>
+      </div>
+    </section>
+
+  </main>
+
+  <main hidden="{{ hideResult }}" style="max-width: 1180px; margin: 0 auto; padding: 32px 28px 72px; display: flex; flex-direction: column; gap: 20px;">
+
+    <div style="display: flex; align-items: flex-start; justify-content: space-between; gap: 20px; flex-wrap: wrap;">
+      <div style="display: flex; align-items: center; gap: 14px; min-width: 0;">
+        <button type="button" onClick="{{ backToUpload }}" aria-label="Back" style="width: 34px; height: 34px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; border: 1px solid var(--rr-line-strong); border-radius: var(--radius-md); background: transparent; color: var(--rr-muted); cursor: pointer;" style-hover="border-color: var(--rr-accent); color: var(--rr-accent)"><i class="ph ph-arrow-left" style="font-size: 16px;"></i></button>
+        <div style="min-width: 0;">
+          <h1 style="margin: 0; font-size: 26px; letter-spacing: -0.025em;">Aditya Verma</h1>
+          <div style="display: flex; align-items: center; flex-wrap: wrap; column-gap: 14px; row-gap: 4px; margin-top: 5px; font-size: 13px; color: var(--rr-muted);">
+            <span style="display: flex; align-items: center; gap: 6px; white-space: nowrap;"><i class="ph ph-envelope-simple" style="font-size: 14px;"></i>aditya.verma@iitr.ac.in</span>
+            <span style="display: flex; align-items: center; gap: 6px; white-space: nowrap;"><i class="ph ph-file-pdf" style="font-size: 14px;"></i>Aditya_Resume_2026.pdf</span>
+            <span style="display: flex; align-items: center; gap: 6px; white-space: nowrap;"><i class="ph ph-clock-counter-clockwise" style="font-size: 14px;"></i>Analysed 2 minutes ago</span>
+          </div>
+        </div>
+      </div>
+      <div style="display: flex; align-items: center; gap: 8px; flex-shrink: 0;">
+        <span style="display: flex; align-items: center; gap: 6px; height: 30px; padding: 0 12px; border: 1px solid var(--rr-line-strong); border-radius: 999px; font-size: 11px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--rr-muted); white-space: nowrap;"><i class="ph ph-check-circle" style="font-size: 14px; color: var(--rr-accent);"></i>Vector stored</span>
+        <button type="button" style="display: flex; align-items: center; gap: 6px; height: 30px; padding: 0 12px; border: 1px solid var(--rr-accent); border-radius: var(--radius-md); background: transparent; color: var(--rr-accent); font-family: var(--font-heading); font-size: 12px; cursor: pointer; white-space: nowrap;" style-hover="background: var(--rr-tint)"><i class="ph ph-download-simple" style="font-size: 14px;"></i>Export report</button>
+        <button type="button" aria-label="Delete resume" style="width: 30px; height: 30px; display: flex; align-items: center; justify-content: center; border: 1px solid var(--rr-line-strong); border-radius: var(--radius-md); background: transparent; color: var(--rr-muted); cursor: pointer;" style-hover="border-color: var(--rr-accent); color: var(--rr-accent)"><i class="ph ph-trash" style="font-size: 15px;"></i></button>
+      </div>
+    </div>
+
+    <div style="display: grid; grid-template-columns: 1.6fr 1fr; gap: 20px; align-items: stretch;">
+
+      <div style="border: 1px solid var(--rr-line); border-radius: var(--radius-lg); background: var(--rr-surface); padding: 22px 24px; display: flex; flex-direction: column; gap: 22px;">
+        <div style="display: flex; align-items: flex-start; justify-content: space-between; gap: 20px;">
+          <div style="display: flex; align-items: baseline; gap: 14px;">
+            <span style="font-family: var(--font-heading); font-size: 52px; line-height: 1; letter-spacing: -0.04em;">78</span>
+            <span style="font-size: 13px; color: var(--rr-muted);">/ 100 ATS</span>
+          </div>
+          <div style="text-align: right; max-width: 30ch; font-size: 12px; line-height: 1.55; color: var(--rr-muted);">Scored on contact completeness, formatting, quantified impact, verb strength and keyword usage.</div>
+        </div>
+
+        <div style="display: flex; flex-direction: column; gap: 13px;">
+          <sc-for list="{{ atsCategories }}" as="cat" hint-placeholder-count="5">
+            <div>
+              <div style="display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 6px;">
+                <span style="font-size: 12.5px; color: var(--rr-text);">{{ cat.label }}</span>
+                <span style="font-size: 12px; color: var(--rr-muted);">{{ cat.readout }}</span>
+              </div>
+              <div style="height: 4px; border-radius: 999px; background: var(--rr-line-strong); overflow: hidden;">
+                <div style="{{ cat.fillStyle }}"></div>
+              </div>
+            </div>
+          </sc-for>
+        </div>
+
+        <div style="border-top: 1px solid var(--rr-line); padding-top: 18px; display: flex; flex-direction: column; gap: 10px;">
+          <span style="font-size: 11px; letter-spacing: 0.09em; text-transform: uppercase; color: var(--rr-muted);">What to fix first</span>
+          <sc-for list="{{ feedback }}" as="f" hint-placeholder-count="3">
+            <div style="display: flex; gap: 10px; font-size: 13.5px; line-height: 1.55;">
+              <span style="color: var(--rr-accent); flex-shrink: 0;">{{ f.n }}</span>
+              <span style="color: var(--rr-muted);">{{ f.text }}</span>
+            </div>
+          </sc-for>
+        </div>
+      </div>
+
+      <div style="display: flex; flex-direction: column; gap: 20px;">
+        <div style="border: 1px solid var(--rr-line); border-radius: var(--radius-lg); background: var(--rr-surface); padding: 20px 22px; display: flex; flex-direction: column; gap: 16px;">
+          <div style="display: flex; align-items: baseline; justify-content: space-between;">
+            <span style="font-size: 12.5px; color: var(--rr-muted);">Skills extracted</span>
+            <span style="font-family: var(--font-heading); font-size: 20px;">24</span>
+          </div>
+          <div style="height: 1px; background: var(--rr-line);"></div>
+          <div style="display: flex; align-items: baseline; justify-content: space-between;">
+            <span style="font-size: 12.5px; color: var(--rr-muted);">Eligible companies</span>
+            <span style="font-family: var(--font-heading); font-size: 20px;">6 <span style="font-size: 13px; color: var(--rr-muted);">of 8</span></span>
+          </div>
+          <div style="height: 1px; background: var(--rr-line);"></div>
+          <div style="display: flex; flex-direction: column; gap: 8px;">
+            <span style="font-size: 12.5px; color: var(--rr-muted);">Best match</span>
+            <div style="display: flex; align-items: center; gap: 10px;">
+              <div style="width: 28px; height: 28px; border-radius: var(--radius-sm); background: #fbfcff; border: 1px solid var(--rr-line); display: flex; align-items: center; justify-content: center; flex-shrink: 0;"><div aria-hidden="true" style="width: 20px; height: 20px; background: url('logo/Nvidia.png') center/contain no-repeat;"></div></div>
+              <span style="font-family: var(--font-heading); font-size: 14px;">Nvidia</span>
+              <span style="margin-left: auto; font-family: var(--font-heading); font-size: 14px; color: var(--rr-accent-text);">91%</span>
+            </div>
+          </div>
+        </div>
+
+        <div style="border: 1px solid var(--rr-line); border-radius: var(--radius-lg); background: var(--rr-surface); padding: 20px 22px; display: flex; flex-direction: column; gap: 10px; flex: 1;">
+          <span style="display: flex; align-items: center; gap: 7px; font-size: 11px; letter-spacing: 0.09em; text-transform: uppercase; color: var(--rr-muted);"><i class="ph ph-sparkle" style="font-size: 13px; color: var(--rr-accent);"></i>AI analysis</span>
+          <p style="margin: 0; font-size: 13.5px; line-height: 1.6; color: var(--rr-muted);">Strong systems signal — CUDA, C++ and two GPU-adjacent projects put you above the bar at hardware-leaning employers. The résumé under-sells outcomes: only four of fourteen bullets carry a number. Add scale or latency figures and the ATS score moves into the high eighties.</p>
+        </div>
+      </div>
+    </div>
+
+    <div style="border: 1px solid var(--rr-line); border-radius: var(--radius-lg); background: var(--rr-surface); padding: 20px 24px; display: flex; flex-direction: column; gap: 14px;">
+      <div style="display: flex; align-items: baseline; justify-content: space-between; gap: 12px;">
+        <span style="font-size: 11px; letter-spacing: 0.09em; text-transform: uppercase; color: var(--rr-muted);">Extracted skills</span>
+        <span style="font-size: 12px; color: var(--rr-muted);">Sorted by confidence</span>
+      </div>
+      <div style="display: flex; flex-wrap: wrap; gap: 8px;">
+        <sc-for list="{{ skills }}" as="s" hint-placeholder-count="14">
+          <span style="{{ s.chipStyle }}">{{ s.name }}</span>
+        </sc-for>
+      </div>
+    </div>
+
+    <div style="border: 1px solid var(--rr-line); border-radius: var(--radius-lg); background: var(--rr-surface); overflow: hidden;">
+      <div style="display: flex; align-items: center; gap: 2px; padding: 0 16px; border-bottom: 1px solid var(--rr-line);">
+        <button type="button" onClick="{{ setTabExperience }}" style="{{ tabExperienceStyle }}">Experience</button>
+        <button type="button" onClick="{{ setTabEducation }}" style="{{ tabEducationStyle }}">Education</button>
+        <button type="button" onClick="{{ setTabProjects }}" style="{{ tabProjectsStyle }}">Projects</button>
+      </div>
+      <div style="padding: 22px 24px;">
+        <div hidden="{{ hideExperience }}" style="display: flex; flex-direction: column; gap: 0;">
+          <sc-for list="{{ experience }}" as="e" hint-placeholder-count="3">
+            <div style="display: grid; grid-template-columns: 14px 1fr; gap: 14px;">
+              <div style="display: flex; flex-direction: column; align-items: center;">
+                <span style="{{ e.dotStyle }}"></span>
+                <span style="{{ e.railStyle }}"></span>
+              </div>
+              <div style="padding-bottom: 18px;">
+                <div style="font-family: var(--font-heading); font-size: 14.5px;">{{ e.role }}</div>
+                <div style="font-size: 13px; color: var(--rr-muted); margin-top: 3px;">{{ e.meta }}</div>
+                <div style="font-size: 13px; color: var(--rr-muted); margin-top: 7px; line-height: 1.55; max-width: 78ch;">{{ e.detail }}</div>
+              </div>
+            </div>
+          </sc-for>
+        </div>
+        <div hidden="{{ hideEducation }}" style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 14px;">
+          <sc-for list="{{ education }}" as="ed" hint-placeholder-count="2">
+            <div style="border: 1px solid var(--rr-line); border-radius: var(--radius-md); padding: 16px 18px; display: flex; flex-direction: column; gap: 6px;">
+              <span style="font-family: var(--font-heading); font-size: 14px;">{{ ed.degree }}</span>
+              <span style="font-size: 13px; color: var(--rr-muted);">{{ ed.school }}</span>
+              <div style="display: flex; align-items: center; justify-content: space-between; margin-top: 6px; font-size: 12px; color: var(--rr-muted);">
+                <span>{{ ed.gpa }}</span><span>{{ ed.year }}</span>
+              </div>
+            </div>
+          </sc-for>
+        </div>
+        <div hidden="{{ hideProjects }}" style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 14px;">
+          <sc-for list="{{ projects }}" as="p" hint-placeholder-count="2">
+            <div style="border: 1px solid var(--rr-line); border-radius: var(--radius-md); padding: 16px 18px; display: flex; flex-direction: column; gap: 8px;">
+              <span style="font-family: var(--font-heading); font-size: 14px;">{{ p.title }}</span>
+              <span style="font-size: 13px; line-height: 1.55; color: var(--rr-muted);">{{ p.desc }}</span>
+              <span style="font-size: 12px; color: var(--rr-muted);">{{ p.stack }}</span>
+            </div>
+          </sc-for>
+        </div>
+      </div>
+    </div>
+
+    <div style="border: 1px solid var(--rr-line); border-radius: var(--radius-lg); background: var(--rr-surface); overflow: hidden;">
+      <div style="display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 16px 24px; border-bottom: 1px solid var(--rr-line);">
+        <span style="font-family: var(--font-heading); font-size: 14px;">Match ranking</span>
+        <span style="font-size: 12px; color: var(--rr-muted);">8 companies evaluated · re-scored nightly</span>
+      </div>
+      <div style="display: grid; grid-template-columns: 48px 1fr 150px 130px 40px; padding: 10px 24px; border-bottom: 1px solid var(--rr-line); font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--rr-muted);">
+        <span>#</span><span>Company</span><span>Match</span><span>Eligibility</span><span></span>
+      </div>
+      <sc-for list="{{ rankings }}" as="r" hint-placeholder-count="8">
+        <div>
+          <div onClick="{{ r.toggle }}" style="{{ r.rowStyle }}">
+            <span style="font-size: 13px; color: var(--rr-muted);">{{ r.rank }}</span>
+            <span style="display: flex; align-items: center; gap: 10px; min-width: 0;">
+              <span style="width: 26px; height: 26px; border-radius: var(--radius-sm); background: #fbfcff; border: 1px solid var(--rr-line); display: flex; align-items: center; justify-content: center; flex-shrink: 0;"><span aria-hidden="true" style="{{ r.markStyle }}"></span></span>
+              <span style="font-family: var(--font-heading); font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{{ r.company }}</span>
+              <span style="font-size: 12px; color: var(--rr-muted); white-space: nowrap;">{{ r.role }}</span>
+            </span>
+            <span style="display: flex; align-items: center; gap: 10px;">
+              <span style="width: 60px; height: 4px; border-radius: 999px; background: var(--rr-line-strong); overflow: hidden;"><span style="{{ r.barStyle }}"></span></span>
+              <span style="font-family: var(--font-heading); font-size: 13px;">{{ r.score }}%</span>
+            </span>
+            <span style="{{ r.eligStyle }}">{{ r.eligLabel }}</span>
+            <span style="{{ r.chevronStyle }}"><i class="ph ph-caret-down" style="font-size: 14px;"></i></span>
+          </div>
+          <div hidden="{{ r.hideDetail }}" style="display: grid; grid-template-columns: 1fr 1fr; gap: 28px; padding: 4px 24px 22px 72px; border-bottom: 1px solid var(--rr-line);">
+            <div style="display: flex; flex-direction: column; gap: 11px;">
+              <span style="font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--rr-muted);">Score breakdown</span>
+              <sc-for list="{{ r.breakdown }}" as="b" hint-placeholder-count="5">
+                <div>
+                  <div style="display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 5px;">
+                    <span style="font-size: 12.5px; color: var(--rr-text);">{{ b.label }}</span>
+                    <span style="font-size: 12px; color: var(--rr-muted);">{{ b.readout }}</span>
+                  </div>
+                  <div style="height: 3px; border-radius: 999px; background: var(--rr-line-strong); overflow: hidden;"><div style="{{ b.fillStyle }}"></div></div>
+                </div>
+              </sc-for>
+            </div>
+            <div style="display: flex; flex-direction: column; gap: 11px;">
+              <span style="font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--rr-muted);">Eligibility &amp; gaps</span>
+              <sc-for list="{{ r.reasons }}" as="reason" hint-placeholder-count="3">
+                <div style="display: flex; align-items: flex-start; gap: 9px; font-size: 13px; line-height: 1.5;">
+                  <i class="{{ reason.icon }}" style="{{ reason.iconStyle }}"></i>
+                  <span style="color: var(--rr-muted);">{{ reason.text }}</span>
+                </div>
+              </sc-for>
+            </div>
+          </div>
+        </div>
+      </sc-for>
+    </div>
+
+  </main>
+
+  <main hidden="{{ hideCompanies }}" style="max-width: 1180px; margin: 0 auto; padding: 40px 28px 72px; display: flex; flex-direction: column; gap: 22px;">
+
+    <div style="display: flex; align-items: flex-end; justify-content: space-between; gap: 20px; flex-wrap: wrap;">
+      <div>
+        <h1 style="margin: 0; font-size: 30px; letter-spacing: -0.025em;">Companies</h1>
+        <p style="margin: 6px 0 0; font-size: 14px; color: var(--rr-muted);">Hiring partners in the index, with the bar each one sets.</p>
+      </div>
+      <button type="button" onClick="{{ openAdd }}" style="display: flex; align-items: center; gap: 7px; height: 36px; padding: 0 15px; border: 1px solid var(--rr-accent); border-radius: var(--radius-md); background: transparent; color: var(--rr-accent); font-family: var(--font-heading); font-weight: 500; font-size: 13px; cursor: pointer; white-space: nowrap;" style-hover="background: var(--rr-tint)"><i class="ph ph-plus" style="font-size: 15px;"></i>Add company / JD</button>
+    </div>
+
+    <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+      <label style="position: relative; flex: 1 1 260px; display: flex; align-items: center;">
+        <i class="ph ph-magnifying-glass" style="position: absolute; left: 13px; font-size: 15px; color: var(--rr-muted);"></i>
+        <input type="text" value="{{ search }}" onInput="{{ onSearch }}" placeholder="Search companies, roles or skills" style="width: 100%; height: 38px; padding: 0 14px 0 36px; border: 1px solid var(--rr-line-strong); border-radius: var(--radius-md); background: var(--rr-surface); color: var(--rr-text); font-family: var(--font-body); font-size: 13.5px;">
+      </label>
+      <select value="{{ branch }}" onChange="{{ onBranch }}" style="height: 38px; padding: 0 12px; border: 1px solid var(--rr-line-strong); border-radius: var(--radius-md); background: var(--rr-surface); color: var(--rr-text); font-family: var(--font-body); font-size: 13.5px; cursor: pointer;">
+        <option value="">Any branch</option>
+        <option value="CSE">CSE</option>
+        <option value="ECE">ECE</option>
+        <option value="EE">EE</option>
+        <option value="ME">ME</option>
+      </select>
+      <select value="{{ dsa }}" onChange="{{ onDsa }}" style="height: 38px; padding: 0 12px; border: 1px solid var(--rr-line-strong); border-radius: var(--radius-md); background: var(--rr-surface); color: var(--rr-text); font-family: var(--font-body); font-size: 13.5px; cursor: pointer;">
+        <option value="">DSA — any</option>
+        <option value="yes">DSA required</option>
+        <option value="no">No DSA round</option>
+      </select>
+      <select value="{{ maxCpi }}" onChange="{{ onCpi }}" style="height: 38px; padding: 0 12px; border: 1px solid var(--rr-line-strong); border-radius: var(--radius-md); background: var(--rr-surface); color: var(--rr-text); font-family: var(--font-body); font-size: 13.5px; cursor: pointer;">
+        <option value="">Any GPA bar</option>
+        <option value="7">Min GPA ≤ 7.0</option>
+        <option value="7.5">Min GPA ≤ 7.5</option>
+        <option value="8">Min GPA ≤ 8.0</option>
+      </select>
+      <button type="button" hidden="{{ hideClear }}" onClick="{{ clearFilters }}" style="height: 38px; padding: 0 12px; border: 0; background: transparent; color: var(--rr-muted); font-family: var(--font-heading); font-size: 13px; cursor: pointer;" style-hover="color: var(--rr-accent)">Clear</button>
+    </div>
+
+    <div style="font-size: 12.5px; color: var(--rr-muted);">{{ resultCount }}</div>
+
+    <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px;">
+      <sc-for list="{{ pagedCompanies }}" as="c" hint-placeholder-count="6">
+        <div style="border: 1px solid var(--rr-line); border-radius: var(--radius-lg); background: var(--rr-surface); padding: 18px 20px; display: flex; flex-direction: column; gap: 14px;" style-hover="border-color: var(--rr-accent)">
+          <div style="display: flex; align-items: center; gap: 12px;">
+            <div style="width: 40px; height: 40px; border-radius: var(--radius-md); background: #fbfcff; border: 1px solid var(--rr-line); display: flex; align-items: center; justify-content: center; flex-shrink: 0;"><div aria-hidden="true" style="{{ c.markStyle }}"></div></div>
+            <div style="min-width: 0; flex: 1;">
+              <div style="display: flex; align-items: center; gap: 6px;">
+                <span style="font-family: var(--font-heading); font-weight: 500; font-size: 15px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{{ c.name }}</span>
+                <i class="{{ c.verifiedIcon }}" style="{{ c.verifiedStyle }}" title="Visits campus"></i>
+              </div>
+              <span style="font-size: 12.5px; color: var(--rr-muted);">{{ c.role }}</span>
+            </div>
+          </div>
+
+          <div style="display: flex; flex-wrap: wrap; gap: 6px;">
+            <sc-for list="{{ c.skills }}" as="sk" hint-placeholder-count="4">
+              <span style="padding: 3px 9px; border: 1px solid var(--rr-line-strong); border-radius: var(--radius-sm); font-size: 11.5px; color: var(--rr-muted); white-space: nowrap;">{{ sk }}</span>
+            </sc-for>
+          </div>
+
+          <div style="margin-top: auto; padding-top: 12px; border-top: 1px solid var(--rr-line); display: flex; align-items: center; justify-content: space-between; gap: 10px; font-size: 12.5px;">
+            <span style="color: var(--rr-muted);">Min GPA <span style="color: var(--rr-text); font-family: var(--font-heading);">{{ c.cpi }}</span></span>
+            <span style="{{ c.dsaStyle }}">{{ c.dsaLabel }}</span>
+          </div>
+        </div>
+      </sc-for>
+    </div>
+
+    <div hidden="{{ hideEmpty }}" style="padding: 60px 0; text-align: center; color: var(--rr-muted);">
+      <i class="ph ph-buildings" style="font-size: 30px; display: block; margin-bottom: 10px;"></i>
+      <span style="font-size: 13.5px;">No companies match those filters.</span>
+    </div>
+
+    <div hidden="{{ hidePager }}" style="display: flex; align-items: center; justify-content: space-between; gap: 16px; padding-top: 6px;">
+      <span style="font-size: 12.5px; color: var(--rr-muted);">{{ pageLabel }}</span>
+      <div style="display: flex; align-items: center; gap: 6px;">
+        <button type="button" onClick="{{ prevPage }}" aria-label="Previous page" style="width: 30px; height: 30px; display: flex; align-items: center; justify-content: center; border: 1px solid var(--rr-line-strong); border-radius: var(--radius-md); background: transparent; color: var(--rr-muted); cursor: pointer;" style-hover="border-color: var(--rr-accent); color: var(--rr-accent)"><i class="ph ph-caret-left" style="font-size: 13px;"></i></button>
+        <sc-for list="{{ pages }}" as="p" hint-placeholder-count="3">
+          <button type="button" onClick="{{ p.go }}" style="{{ p.style }}">{{ p.n }}</button>
+        </sc-for>
+        <button type="button" onClick="{{ nextPage }}" aria-label="Next page" style="width: 30px; height: 30px; display: flex; align-items: center; justify-content: center; border: 1px solid var(--rr-line-strong); border-radius: var(--radius-md); background: transparent; color: var(--rr-muted); cursor: pointer;" style-hover="border-color: var(--rr-accent); color: var(--rr-accent)"><i class="ph ph-caret-right" style="font-size: 13px;"></i></button>
+      </div>
+    </div>
+  </main>
+
+  <main hidden="{{ hideAts }}" style="max-width: 1240px; margin: 0 auto; padding: 40px 28px 72px; display: flex; flex-direction: column; gap: 20px;">
+
+    <div style="display: flex; align-items: flex-end; justify-content: space-between; gap: 20px; flex-wrap: wrap;">
+      <div>
+        <h1 style="margin: 0; font-size: 30px; letter-spacing: -0.025em;">Your ATS dashboard</h1>
+        <p style="margin: 6px 0 0; font-size: 14px; color: var(--rr-muted);">Aditya Verma · Aditya_Resume_2026.pdf · every company you have been scored against.</p>
+      </div>
+      <div style="display: flex; align-items: center; gap: 10px;">
+        <div style="display: flex; border: 1px solid var(--rr-line-strong); border-radius: var(--radius-md); overflow: hidden;">
+          <button type="button" onClick="{{ setV1 }}" style="{{ v1Style }}">v1</button>
+          <button type="button" onClick="{{ setV2 }}" style="{{ v2Style }}">v2</button>
+          <button type="button" onClick="{{ setV3 }}" style="{{ v3Style }}">v3</button>
+          <button type="button" onClick="{{ setV4 }}" style="{{ v4Style }}">Latest</button>
+        </div>
+        <button type="button" style="display: flex; align-items: center; gap: 7px; height: 34px; padding: 0 14px; border: 1px solid var(--rr-accent); border-radius: var(--radius-md); background: transparent; color: var(--rr-accent); font-family: var(--font-heading); font-size: 13px; cursor: pointer; white-space: nowrap;" style-hover="background: var(--rr-tint)"><i class="ph ph-export" style="font-size: 15px;"></i>Export report</button>
+      </div>
+    </div>
+
+    <div style="display: grid; grid-template-columns: repeat(5, 1fr); gap: 1px; background: var(--rr-line); border: 1px solid var(--rr-line); border-radius: var(--radius-lg); overflow: hidden;">
+      <sc-for list="{{ kpis }}" as="k" hint-placeholder-count="5">
+        <div style="background: var(--rr-surface); padding: 16px 18px; display: flex; flex-direction: column; gap: 7px;">
+          <span style="font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--rr-muted);">{{ k.label }}</span>
+          <div style="display: flex; align-items: baseline; gap: 8px;">
+            <span style="font-family: var(--font-heading); font-size: 27px; letter-spacing: -0.03em; white-space: nowrap;">{{ k.value }}</span>
+            <span style="{{ k.deltaStyle }}"><i class="{{ k.deltaIcon }}" style="font-size: 11px;"></i>{{ k.delta }}</span>
+          </div>
+          <span style="font-size: 11.5px; color: var(--rr-muted); line-height: 1.4;">{{ k.sub }}</span>
+        </div>
+      </sc-for>
+    </div>
+
+    <div style="display: grid; grid-template-columns: 1.35fr 1fr; gap: 20px;">
+      <div style="border: 1px solid var(--rr-line); border-radius: var(--radius-lg); background: var(--rr-surface); padding: 20px 22px; display: flex; flex-direction: column; gap: 16px;">
+        <div style="display: flex; align-items: baseline; justify-content: space-between; gap: 12px;">
+          <span style="font-family: var(--font-heading); font-size: 14px;">Your score across versions</span>
+          <div style="display: flex; align-items: center; gap: 14px; font-size: 11.5px; color: var(--rr-muted);">
+            <span style="display: flex; align-items: center; gap: 6px;"><span style="width: 14px; height: 2px; background: var(--rr-accent);"></span>Your ATS</span>
+            <span style="display: flex; align-items: center; gap: 6px;"><span style="width: 14px; height: 0; border-top: 2px dashed var(--rr-muted);"></span>Bar for your target roles</span>
+          </div>
+        </div>
+        <svg viewBox="0 0 520 170" preserveAspectRatio="none" style="width: 100%; height: 170px; overflow: visible;">
+          <line x1="0" y1="10" x2="520" y2="10" stroke="var(--rr-line)" stroke-width="1"></line>
+          <line x1="0" y1="50" x2="520" y2="50" stroke="var(--rr-line)" stroke-width="1"></line>
+          <line x1="0" y1="90" x2="520" y2="90" stroke="var(--rr-line)" stroke-width="1"></line>
+          <line x1="0" y1="130" x2="520" y2="130" stroke="var(--rr-line)" stroke-width="1"></line>
+          <polygon points="{{ trendArea }}" fill="var(--rr-tint-strong)"></polygon>
+          <polyline points="{{ trendTarget }}" fill="none" stroke="var(--rr-muted)" stroke-width="1.6" stroke-dasharray="5 4" stroke-linecap="round"></polyline>
+          <polyline points="{{ trendMine }}" fill="none" stroke="var(--rr-accent)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"></polyline>
+        </svg>
+        <div style="display: flex; justify-content: space-between; font-size: 11px; color: var(--rr-muted);">
+          <sc-for list="{{ trendLabels }}" as="w" hint-placeholder-count="4"><span>{{ w }}</span></sc-for>
+        </div>
+      </div>
+
+      <div style="border: 1px solid var(--rr-line); border-radius: var(--radius-lg); background: var(--rr-surface); padding: 20px 22px; display: flex; flex-direction: column; gap: 16px;">
+        <div style="display: flex; align-items: baseline; justify-content: space-between; gap: 12px;">
+          <span style="font-family: var(--font-heading); font-size: 14px;">Category vs. top-decile resumes</span>
+        </div>
+        <div style="display: flex; flex-direction: column; gap: 14px;">
+          <sc-for list="{{ benchmark }}" as="b" hint-placeholder-count="5">
+            <div style="display: flex; flex-direction: column; gap: 6px;">
+              <div style="display: flex; align-items: baseline; justify-content: space-between; font-size: 12.5px;">
+                <span>{{ b.label }}</span>
+                <span style="color: var(--rr-muted);">{{ b.readout }}</span>
+              </div>
+              <div style="position: relative; height: 10px;">
+                <div style="position: absolute; inset: 3px 0; border-radius: 999px; background: var(--rr-surface-2);"></div>
+                <div style="{{ b.fillStyle }}"></div>
+                <div style="{{ b.markerStyle }}"></div>
+              </div>
+            </div>
+          </sc-for>
+        </div>
+        <span style="font-size: 11.5px; color: var(--rr-muted); line-height: 1.5;">The tick shows where the top 10% of scored resumes sit. Quantifiable metrics is your widest gap.</span>
+      </div>
+    </div>
+
+    <div style="border: 1px solid var(--rr-line); border-radius: var(--radius-lg); background: var(--rr-surface); overflow: hidden;">
+      <div style="display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 16px 22px; border-bottom: 1px solid var(--rr-line);">
+        <div style="display: flex; align-items: baseline; gap: 12px;">
+          <span style="font-family: var(--font-heading); font-size: 14px;">All companies</span>
+          <span style="font-size: 12px; color: var(--rr-muted);">{{ companyCount }}</span>
+        </div>
+        <div style="display: flex; border: 1px solid var(--rr-line-strong); border-radius: var(--radius-md); overflow: hidden;">
+          <button type="button" onClick="{{ setFilterAll }}" style="{{ filterAllStyle }}">All</button>
+          <button type="button" onClick="{{ setFilterEligible }}" style="{{ filterEligibleStyle }}">Eligible</button>
+          <button type="button" onClick="{{ setFilterBlocked }}" style="{{ filterBlockedStyle }}">Blocked</button>
+        </div>
+      </div>
+      <div style="display: grid; grid-template-columns: 1.5fr 1.2fr 150px 110px 1.4fr; padding: 10px 22px; border-bottom: 1px solid var(--rr-line); font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--rr-muted);">
+        <span>Company</span><span>Role</span><span>Your match</span><span>Status</span><span>What is holding you back</span>
+      </div>
+      <sc-for list="{{ companyRows }}" as="c" hint-placeholder-count="8">
+        <div style="display: grid; grid-template-columns: 1.5fr 1.2fr 150px 110px 1.4fr; align-items: center; padding: 13px 22px; border-bottom: 1px solid var(--rr-line);" style-hover="background: var(--rr-surface-2)">
+          <span style="display: flex; align-items: center; gap: 10px; min-width: 0;">
+            <span style="width: 26px; height: 26px; border-radius: var(--radius-sm); background: #fbfcff; border: 1px solid var(--rr-line); display: flex; align-items: center; justify-content: center; flex-shrink: 0;"><span aria-hidden="true" style="{{ c.markStyle }}"></span></span>
+            <span style="font-family: var(--font-heading); font-size: 13.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{{ c.name }}</span>
+          </span>
+          <span style="font-size: 12.5px; color: var(--rr-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{{ c.role }}</span>
+          <span style="display: flex; align-items: center; gap: 10px;">
+            <span style="width: 62px; height: 4px; border-radius: 999px; background: var(--rr-surface-2); overflow: hidden;"><span style="{{ c.barStyle }}"></span></span>
+            <span style="font-family: var(--font-heading); font-size: 13px;">{{ c.score }}%</span>
+          </span>
+          <span style="{{ c.statusStyle }}">{{ c.status }}</span>
+          <span style="font-size: 12.5px; color: var(--rr-muted); line-height: 1.45;">{{ c.blocker }}</span>
+        </div>
+      </sc-for>
+    </div>
+
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+      <div style="border: 1px solid var(--rr-line); border-radius: var(--radius-lg); background: var(--rr-surface); padding: 20px 22px; display: flex; flex-direction: column; gap: 16px;">
+        <div style="display: flex; align-items: baseline; justify-content: space-between; gap: 12px;">
+          <span style="font-family: var(--font-heading); font-size: 14px;">Skills that unlock companies</span>
+          <span style="font-size: 11.5px; color: var(--rr-muted);">Missing from your resume</span>
+        </div>
+        <div style="display: flex; flex-direction: column; gap: 12px;">
+          <sc-for list="{{ unlocks }}" as="u" hint-placeholder-count="5">
+            <div style="display: grid; grid-template-columns: 128px 1fr 96px; align-items: center; gap: 12px;">
+              <span style="font-size: 12.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{{ u.skill }}</span>
+              <div style="height: 6px; border-radius: 999px; background: var(--rr-surface-2); overflow: hidden;"><div style="{{ u.barStyle }}"></div></div>
+              <span style="font-size: 11.5px; color: var(--rr-muted); text-align: right;">{{ u.readout }}</span>
+            </div>
+          </sc-for>
+        </div>
+      </div>
+
+      <div style="border: 1px solid var(--rr-line); border-radius: var(--radius-lg); background: var(--rr-surface); padding: 20px 22px; display: flex; flex-direction: column; gap: 14px;">
+        <div style="display: flex; align-items: baseline; justify-content: space-between; gap: 12px;">
+          <span style="font-family: var(--font-heading); font-size: 14px;">Fix these next</span>
+          <span style="font-size: 11.5px; color: var(--rr-muted);">Projected ATS gain</span>
+        </div>
+        <sc-for list="{{ actions }}" as="a" hint-placeholder-count="4">
+          <div style="display: flex; align-items: flex-start; gap: 12px; padding-bottom: 12px; border-bottom: 1px solid var(--rr-line);">
+            <span style="display: flex; align-items: center; justify-content: center; width: 22px; height: 22px; border-radius: 999px; border: 1px solid var(--rr-accent); color: var(--rr-accent); font-size: 11px; flex-shrink: 0; margin-top: 1px;">{{ a.n }}</span>
+            <span style="flex: 1; font-size: 13px; line-height: 1.5; color: var(--rr-muted);">{{ a.text }}</span>
+            <span style="display: inline-flex; align-items: center; white-space: nowrap; font-family: var(--font-heading); font-size: 13px; color: var(--rr-accent-text);">{{ a.gain }}</span>
+          </div>
+        </sc-for>
+      </div>
+    </div>
+
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+      <div style="border: 1px solid var(--rr-line); border-radius: var(--radius-lg); background: var(--rr-surface); padding: 20px 22px; display: flex; flex-direction: column; gap: 14px;">
+        <div style="display: flex; align-items: baseline; justify-content: space-between; gap: 12px;">
+          <span style="font-family: var(--font-heading); font-size: 14px;">Upload history</span>
+          <span style="font-size: 11.5px; color: var(--rr-muted);">4 versions on file</span>
+        </div>
+        <div style="display: flex; flex-direction: column;">
+          <sc-for list="{{ history }}" as="h" hint-placeholder-count="4">
+            <div style="display: grid; grid-template-columns: 20px 1fr auto; align-items: center; gap: 14px; padding: 11px 0; border-bottom: 1px solid var(--rr-line);">
+              <span style="{{ h.dotStyle }}"></span>
+              <div style="min-width: 0;">
+                <div style="font-family: var(--font-heading); font-size: 13px;">{{ h.label }}</div>
+                <div style="font-size: 12px; color: var(--rr-muted); margin-top: 2px;">{{ h.date }} · {{ h.file }}</div>
+              </div>
+              <div style="display: flex; align-items: center; gap: 8px;">
+                <span style="width: 48px; height: 4px; border-radius: 999px; background: var(--rr-surface-2); overflow: hidden;"><span style="{{ h.barStyle }}"></span></span>
+                <span style="font-family: var(--font-heading); font-size: 14px; min-width: 20px; text-align: right;">{{ h.score }}</span>
+              </div>
+            </div>
+          </sc-for>
+        </div>
+      </div>
+
+      <div style="border: 1px solid var(--rr-line); border-radius: var(--radius-lg); background: var(--rr-surface); padding: 20px 22px; display: flex; flex-direction: column; gap: 12px;">
+        <span style="display: flex; align-items: center; gap: 7px; font-size: 11px; letter-spacing: 0.09em; text-transform: uppercase; color: var(--rr-muted);"><i class="ph ph-sparkle" style="font-size: 13px; color: var(--rr-accent);"></i>AI insights on your latest version</span>
+        <p style="margin: 0; font-size: 13.5px; line-height: 1.65; color: var(--rr-muted);">Your systems and low-level programming signal is strong enough to clear hardware-leaning bars (Nvidia, Texas Instruments) comfortably. The gap to the next tier is almost entirely quantification — bullets that name a tool but not its effect. Two re-uploads have each added roughly four points, mostly from fixing exactly that. One more pass focused on numbers, plus adding Java to a project, would plausibly clear Google and put Amazon within reach.</p>
+      </div>
+    </div>
+
+  </main>
+
+  <div hidden="{{ hideAddModal }}" onClick="{{ closeAdd }}" style="position: fixed; inset: 0; z-index: 60; display: flex; align-items: center; justify-content: center; padding: 24px; background: rgba(10,11,18,0.62); backdrop-filter: blur(3px);">
+    <div onClick="{{ stop }}" style="width: 100%; max-width: 520px; border: 1px solid var(--rr-line-strong); border-radius: var(--radius-lg); background: var(--rr-surface); box-shadow: var(--rr-shadow); overflow: hidden;">
+      <div style="display: flex; align-items: center; justify-content: space-between; padding: 16px 20px; border-bottom: 1px solid var(--rr-line);">
+        <span style="font-family: var(--font-heading); font-weight: 500; font-size: 15px;">Add company / JD</span>
+        <button type="button" onClick="{{ closeAdd }}" aria-label="Close" style="width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; border: 0; border-radius: var(--radius-md); background: transparent; color: var(--rr-muted); cursor: pointer;" style-hover="background: var(--rr-tint); color: var(--rr-text)"><i class="ph ph-x" style="font-size: 15px;"></i></button>
+      </div>
+      <div style="padding: 20px; display: grid; grid-template-columns: 1fr 1fr; gap: 14px;">
+        <label style="display: flex; flex-direction: column; gap: 6px; grid-column: span 2;">
+          <span style="font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--rr-muted);">Company name</span>
+          <input type="text" placeholder="e.g. Qualcomm" style="height: 36px; padding: 0 12px; border: 1px solid var(--rr-line-strong); border-radius: var(--radius-md); background: var(--rr-surface-2); color: var(--rr-text); font-family: var(--font-body); font-size: 13.5px;">
+        </label>
+        <label style="display: flex; flex-direction: column; gap: 6px;">
+          <span style="font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--rr-muted);">Role</span>
+          <input type="text" placeholder="Digital Design Intern" style="height: 36px; padding: 0 12px; border: 1px solid var(--rr-line-strong); border-radius: var(--radius-md); background: var(--rr-surface-2); color: var(--rr-text); font-family: var(--font-body); font-size: 13.5px;">
+        </label>
+        <label style="display: flex; flex-direction: column; gap: 6px;">
+          <span style="font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--rr-muted);">Min GPA</span>
+          <input type="number" step="0.1" placeholder="7.5" style="height: 36px; padding: 0 12px; border: 1px solid var(--rr-line-strong); border-radius: var(--radius-md); background: var(--rr-surface-2); color: var(--rr-text); font-family: var(--font-body); font-size: 13.5px;">
+        </label>
+        <label style="display: flex; flex-direction: column; gap: 6px; grid-column: span 2;">
+          <span style="font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--rr-muted);">Job description</span>
+          <textarea rows="5" placeholder="Paste the JD — it is embedded and used for matching." style="padding: 10px 12px; border: 1px solid var(--rr-line-strong); border-radius: var(--radius-md); background: var(--rr-surface-2); color: var(--rr-text); font-family: var(--font-body); font-size: 13.5px; resize: vertical;"></textarea>
+        </label>
+        <label style="display: flex; align-items: center; gap: 9px; grid-column: span 2; font-size: 13px; color: var(--rr-muted); cursor: pointer;">
+          <input type="checkbox" style="width: 15px; height: 15px; accent-color: var(--rr-accent);">DSA round required
+        </label>
+      </div>
+      <div style="display: flex; align-items: center; justify-content: flex-end; gap: 10px; padding: 14px 20px; border-top: 1px solid var(--rr-line); background: var(--rr-surface-2);">
+        <button type="button" onClick="{{ closeAdd }}" style="height: 32px; padding: 0 14px; border: 0; border-radius: var(--radius-md); background: transparent; color: var(--rr-muted); font-family: var(--font-heading); font-size: 13px; cursor: pointer;" style-hover="color: var(--rr-text)">Cancel</button>
+        <button type="button" onClick="{{ closeAdd }}" style="height: 32px; padding: 0 16px; border: 1px solid var(--rr-accent); border-radius: var(--radius-md); background: transparent; color: var(--rr-accent); font-family: var(--font-heading); font-size: 13px; cursor: pointer;" style-hover="background: var(--rr-tint)">Save &amp; embed</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;theme&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;dark&quot;,&quot;light&quot;],&quot;default&quot;:&quot;dark&quot;,&quot;tsType&quot;:&quot;'dark' | 'light'&quot;},&quot;screen&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;landing&quot;,&quot;upload&quot;,&quot;result&quot;,&quot;companies&quot;,&quot;ats&quot;,&quot;auth&quot;],&quot;default&quot;:&quot;landing&quot;,&quot;tsType&quot;:&quot;'landing' | 'upload' | 'result' | 'companies' | 'ats' | 'auth'&quot;},&quot;loggedIn&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:false,&quot;tsType&quot;:&quot;boolean&quot;}}">
+const STEPS = [
+  { title: 'Upload', desc: 'File received and virus-scanned.', icon: 'ph ph-upload-simple' },
+  { title: 'Parse', desc: 'Extracting sections, skills and dates.', icon: 'ph ph-file-magnifying-glass' },
+  { title: 'Embed', desc: 'Generating vectors and the ATS score.', icon: 'ph ph-graph' },
+  { title: 'Rank', desc: 'Scoring against 96 indexed companies.', icon: 'ph ph-ranking' },
+];
+
+const ATS = [
+  ['Contact info', 13, 15], ['Formatting & ordering', 16, 20], ['Quantifiable metrics', 14, 25],
+  ['Action verbs', 21, 25], ['Keyword density', 11, 15],
+];
+const FEEDBACK = [
+  'Only 4 of 14 bullets contain a number — quantify scale, latency or cost wherever you can.',
+  'Two date ranges are formatted differently; parsers read “Jun 2025 – Aug 2025” most reliably.',
+  'The skills section repeats terms already in your bullets — replace them with the JD keywords you are missing.',
+];
+const SKILLS = ['C++','CUDA','Python','PyTorch','Verilog','SystemVerilog','Computer architecture','Linux','Git','Docker','FastAPI','PostgreSQL','NumPy','OpenMP','TensorRT','Bash','Signal processing','Data structures','MATLAB','Kubernetes','gRPC','Pandas','REST APIs','CI/CD'];
+const EXPERIENCE = [
+  ['GPU Systems Intern — Nvidia', 'May 2025 – Aug 2025 · Bangalore', 'Profiled kernel launch overhead across three inference workloads and cut median latency 18% by batching descriptor writes.'],
+  ['Research Assistant — IIT Roorkee HPC Lab', 'Aug 2024 – Apr 2025 · Roorkee', 'Built a CUDA sparse solver used by two graduate projects; benchmarked against cuSPARSE.'],
+  ['Backend Intern — Zoho', 'May 2024 – Jul 2024 · Chennai', 'Shipped a FastAPI service handling 40k daily requests behind an existing PHP monolith.'],
+];
+const EDUCATION = [
+  ['B.Tech, Electronics & Communication', 'Indian Institute of Technology Roorkee', 'CGPA 8.7 / 10', '2022 – 2026'],
+  ['Senior Secondary (CBSE)', 'Delhi Public School, Jaipur', '94.2%', '2020 – 2022'],
+];
+const PROJECTS = [
+  ['Sparse attention kernel', 'A fused CUDA kernel for block-sparse attention, 2.3× faster than the dense baseline at 4k context.', 'CUDA · C++ · PyTorch'],
+  ['Verilog RISC-V core', 'Five-stage pipelined core with hazard forwarding, synthesised on an Artix-7 board.', 'Verilog · Vivado · Python'],
+];
+const BREAKDOWN_META = [
+  ['Skill overlap', 30], ['Resume ↔ JD match', 30], ['Academic & branch', 15], ['Project relevance', 15], ['Experience', 10],
+];
+const RANKINGS = [
+  ['Nvidia', 'Systems Software Intern', 'Nvidia.png', 91, true, [27, 26, 14, 14, 10], [['ok','CGPA 8.7 clears the 7.5 cut-off'],['ok','CUDA and C++ both appear in the required set'],['ok','ECE is an accepted branch for this role']]],
+  ['Texas Instruments', 'Digital Design Intern', 'Texas_Instruments.png', 88, true, [26, 25, 14, 13, 10], [['ok','Verilog and SystemVerilog matched'],['ok','ECE branch accepted'],['warn','No tape-out or DFT exposure listed']]],
+  ['Google', 'SWE Intern, Infrastructure', 'Google.png', 79, true, [23, 24, 12, 11, 9], [['ok','Meets the CGPA bar'],['warn','Distributed systems coursework not detected'],['warn','Only one large-scale service on the resume']]],
+  ['Microsoft', 'Cloud Platform Intern', 'Microsoft.png', 74, true, [21, 22, 12, 11, 8], [['ok','Docker and Kubernetes matched'],['warn','C# / .NET not present'],['warn','Two of five preferred keywords missing']]],
+  ['Amazon', 'SDE Intern', 'Amazon.png', 71, true, [20, 21, 12, 10, 8], [['ok','Data structures signal is strong'],['warn','No Java on the resume'],['warn','Leadership-principle phrasing absent from bullets']]],
+  ['Goldman Sachs', 'Quant Developer Intern', 'Goldman_Sachs.png', 63, true, [17, 18, 12, 9, 7], [['ok','Python and NumPy matched'],['warn','No finance or derivatives exposure'],['warn','Statistics coursework not detected']]],
+  ['Infosys', 'Platform Engineer', 'Infosys.png', 54, false, [14, 15, 11, 8, 6], [['ok','Branch eligible'],['no','Role requires 1+ year full-time experience'],['warn','Java and Spring not present']]],
+  ['TCS', 'Digital Cadre', 'TCS.png', 48, false, [12, 13, 11, 7, 5], [['ok','CGPA clears the bar'],['no','Applications closed for the 2026 cohort'],['warn','No enterprise integration experience']]],
+];
+const REASON_ICON = { ok: 'ph ph-check', warn: 'ph ph-minus', no: 'ph ph-x' };
+
+// name, role, logo, min CPI, dsa, visits campus, branches, skills
+const COMPANIES = [
+  ['Nvidia','Systems Software Intern','Nvidia.png',8.0,true,true,['CSE','ECE'],['CUDA','C++','Computer architecture','Python','Linux']],
+  ['Texas Instruments','Digital Design Intern','Texas_Instruments.png',7.5,false,true,['ECE','EE'],['Verilog','SystemVerilog','Digital design','MATLAB']],
+  ['Google','SWE Intern, Infrastructure','Google.png',8.0,true,true,['CSE','ECE'],['Data structures','C++','Distributed systems','Go']],
+  ['Microsoft','Cloud Platform Intern','Microsoft.png',7.5,true,true,['CSE'],['C#','Azure','Kubernetes','REST APIs']],
+  ['Amazon','SDE Intern','Amazon.png',7.0,true,true,['CSE','ECE','EE'],['Java','Data structures','AWS','System design']],
+  ['Goldman Sachs','Quant Developer Intern','Goldman_Sachs.png',8.5,true,false,['CSE','EE'],['Python','Statistics','C++','Derivatives']],
+  ['JP Morgan','Software Engineer Program','JP_Morgan.png',7.5,true,true,['CSE'],['Java','Spring','SQL','React']],
+  ['Cisco','Network Software Intern','Cisco.png',7.0,true,true,['CSE','ECE'],['Networking','C','Python','Linux']],
+  ['Oracle','Database Intern','Oracle.png',7.5,true,false,['CSE'],['SQL','Java','PL/SQL','Performance tuning']],
+  ['Samsung','Embedded Systems Intern','Samsung.png',7.0,false,true,['ECE','EE'],['Embedded C','RTOS','ARM','Signal processing']],
+  ['Arista','Software Intern','Arista.png',8.0,true,false,['CSE','ECE'],['Python','Networking','C++','Automation']],
+  ['Atlassian','Frontend Intern','Atlassian.png',7.5,true,false,['CSE'],['React','TypeScript','CSS','Testing']],
+  ['Bosch','R&D Intern','Bosch.png',6.5,false,true,['ME','EE','ECE'],['CAD','Embedded C','CAN bus','Simulink']],
+  ['IBM','Cloud Research Intern','IBM.png',7.0,false,true,['CSE','ECE'],['Docker','Kubernetes','Python','ML']],
+  ['Accenture','Technology Analyst','Accenture.png',6.5,false,true,['CSE','ECE','EE','ME'],['SQL','Java','Cloud','Consulting']],
+  ['Infosys','Platform Engineer','Infosys.png',6.5,false,true,['CSE','ECE','EE','ME'],['Java','Spring','SQL','DevOps']],
+  ['TCS','Digital Cadre','TCS.png',6.0,false,true,['CSE','ECE','EE','ME'],['Java','Python','Cloud','Testing']],
+  ['Shell','Data Science Intern','Shell.png',7.5,false,false,['CSE','ME'],['Python','Pandas','Optimisation','Geostatistics']],
+  ['Zomato','Product Analyst Intern','Zomato.png',7.0,true,false,['CSE','ECE'],['SQL','Python','Experimentation','Dashboards']],
+  ['Mahindra','Mechanical Design Intern','Mahindra.png',6.5,false,true,['ME'],['CAD','FEA','GD&T','Ansys']],
+];
+const PER_PAGE = 6;
+
+const LAND = [
+  ['Nvidia', 'Systems Software Intern', 91, [['Skill overlap', 27, 30], ['Resume ↔ JD match', 26, 30], ['Project relevance', 14, 15]],
+    'Strong systems signal — CUDA and C++ both matched, plus two GPU-adjacent projects.'],
+  ['Texas Instruments', 'Digital Design Intern', 88, [['Skill overlap', 26, 30], ['Resume ↔ JD match', 25, 30], ['Project relevance', 13, 15]],
+    'Verilog and SystemVerilog matched; no tape-out or DFT exposure listed yet.'],
+  ['Google', 'SWE Intern, Infrastructure', 79, [['Skill overlap', 23, 30], ['Resume ↔ JD match', 24, 30], ['Project relevance', 11, 15]],
+    'Meets the CGPA bar, but distributed-systems coursework was not detected.'],
+  ['Goldman Sachs', 'Quant Developer Intern', 63, [['Skill overlap', 17, 30], ['Resume ↔ JD match', 18, 30], ['Project relevance', 9, 15]],
+    'Python and NumPy matched — no finance exposure and statistics is missing.'],
+];
+const LAND_EXTRA = [
+  ['Quantified impact in bullets', 3],
+  ['Tape-out / DFT exposure', 6],
+  ['Distributed systems coursework', 18],
+  ['Statistics & derivatives depth', 41],
+];
+const TICKER = [
+  'Aditya just scored 78 on ATS · 2s ago',
+  '14 new roles indexed at Texas Instruments · 1m ago',
+  'Median turnaround this hour: 34s',
+  'Priya moved from 64 → 81 after two fixes · 4m ago',
+];
+
+const VERSIONS = ['v1', 'v2', 'v3', 'Latest'];
+const MY_TREND = [62, 69, 74, 78];
+const TARGET_LINE = [82, 82, 82, 82];
+const BENCHMARK = [
+  ['Contact info', 13, 15, 14], ['Formatting & ordering', 16, 20, 18],
+  ['Quantifiable metrics', 14, 25, 22], ['Action verbs', 21, 25, 23], ['Keyword density', 11, 15, 13],
+];
+const MY_COMPANIES = [
+  ['Nvidia','Systems Software Intern','Nvidia.png', 91, 'eligible', 'Nothing — strongest match in your set'],
+  ['Texas Instruments','Digital Design Intern','Texas_Instruments.png', 88, 'eligible', 'No tape-out or DFT exposure listed'],
+  ['Google','SWE Intern, Infrastructure','Google.png', 79, 'eligible', 'Distributed systems coursework not detected'],
+  ['Microsoft','Cloud Platform Intern','Microsoft.png', 74, 'eligible', 'C# / .NET absent; two preferred keywords missing'],
+  ['Amazon','SDE Intern','Amazon.png', 71, 'eligible', 'No Java on the resume'],
+  ['Goldman Sachs','Quant Developer Intern','Goldman_Sachs.png', 63, 'eligible', 'No finance exposure; statistics not detected'],
+  ['Infosys','Platform Engineer','Infosys.png', 54, 'blocked', 'Requires 1+ year full-time experience'],
+  ['TCS','Digital Cadre','TCS.png', 48, 'blocked', 'Applications closed for the 2026 cohort'],
+];
+const UNLOCKS = [
+  ['Java', 2, 'Amazon, Infosys'], ['System design', 2, 'Google, Amazon'], ['Distributed systems', 1, 'Google'],
+  ['C# / .NET', 1, 'Microsoft'], ['Statistics', 1, 'Goldman Sachs'],
+];
+const NOTIFICATIONS = [
+  ['ph ph-trophy', 'You are now eligible for Nvidia — Systems Software Intern.', '2h ago'],
+  ['ph ph-file-text', 'ATS re-scored after your latest upload: 74 → 78.', '1d ago'],
+  ['ph ph-buildings', 'Goldman Sachs added a new Quant Developer Intern role.', '3d ago'],
+];
+const HISTORY = [
+  ['v1 — first upload', 'Mar 12, 2026', 'Aditya_Resume.pdf', 62],
+  ['v2 — added metrics to experience', 'Apr 2, 2026', 'Aditya_Resume_v2.pdf', 69],
+  ['v3 — reformatted, fixed dates', 'May 20, 2026', 'Aditya_Resume_v3.pdf', 74],
+  ['Latest — added HPC project', 'Jul 26, 2026', 'Aditya_Resume_2026.pdf', 78],
+];
+const ACTIONS = [
+  ['Add a number to the ten bullets that have none — scale, latency, cost or headcount.', '+6'],
+  ['Name Java once in a project context; it is the single most common gap across your matched roles.', '+4'],
+  ['Normalise all date ranges to “Jun 2025 – Aug 2025”; two entries parse ambiguously today.', '+3'],
+  ['Replace the skills list duplicates with the four JD keywords you are missing.', '+2'],
+];
+
+class Component extends DCLogic {
+  state = { theme: this.props.theme || 'dark', step: 0, dragOver: false, fileName: null, screen: this.props.screen || 'upload', tab: 'Experience', openRank: 0, search: '', branch: '', dsa: '', maxCpi: '', page: 1, addOpen: false,
+    loggedIn: this.props.loggedIn ?? true, notifOpen: false, profileOpen: false, authStep: 'email', authEmail: '',
+    landCo: 0, landFrom: 0, landT: 1, intro: 0, tick: 0, mx: 0.5, my: 0.5, stageHover: false };
+
+  onStage = (e) => {
+    const r = e.currentTarget.getBoundingClientRect();
+    this._mxT = (e.clientX - r.left) / r.width;
+    this._myT = (e.clientY - r.top) / r.height;
+    if (!this.state.stageHover) this.setState({ stageHover: true });
+    this.runTiltLoop();
+  };
+  offStage = () => {
+    this._mxT = 0.5; this._myT = 0.5;
+    this.setState({ stageHover: false });
+    this.runTiltLoop();
+  };
+  runTiltLoop = () => {
+    if (this._tiltRaf) return;
+    const step = () => {
+      const mx = this.state.mx, my = this.state.my;
+      const nx = mx + (this._mxT - mx) * 0.09;
+      const ny = my + (this._myT - my) * 0.09;
+      this.setState({ mx: nx, my: ny });
+      if (Math.abs(nx - this._mxT) > 0.0008 || Math.abs(ny - this._myT) > 0.0008) {
+        this._tiltRaf = requestAnimationFrame(step);
+      } else {
+        this._tiltRaf = null;
+      }
+    };
+    this._tiltRaf = requestAnimationFrame(step);
+  };
+
+  componentDidMount() {
+    const t0 = performance.now();
+    const loop = () => {
+      const p = Math.min(1, (performance.now() - t0) / 1200);
+      this.setState({ intro: p });
+      if (p < 1) this._introRaf = requestAnimationFrame(loop);
+    };
+    this._introRaf = requestAnimationFrame(loop);
+    this._tickI = setInterval(() => this.setState(s => ({ tick: s.tick + 1 })), 3000);
+  }
+
+  pickLand = (i) => () => {
+    if (i === this.state.landCo) return;
+    cancelAnimationFrame(this._landRaf);
+    this.setState(s => ({ landFrom: s.landCo, landCo: i, landT: 0 }));
+    const t0 = performance.now();
+    const loop = () => {
+      const p = Math.min(1, (performance.now() - t0) / 620);
+      this.setState({ landT: p });
+      if (p < 1) this._landRaf = requestAnimationFrame(loop);
+    };
+    this._landRaf = requestAnimationFrame(loop);
+  };
+
+  tabStyle(name) {
+    const on = this.state.tab === name;
+    return `height: 42px; padding: 0 14px; border: 0; border-bottom: 2px solid ${on ? 'var(--rr-accent)' : 'transparent'}; margin-bottom: -1px; background: transparent; color: ${on ? 'var(--rr-text)' : 'var(--rr-muted)'}; font-family: var(--font-heading); font-weight: 500; font-size: 13px; cursor: pointer;`;
+  }
+
+  componentWillUnmount() {
+    clearTimeout(this._t);
+    clearInterval(this._tickI);
+    cancelAnimationFrame(this._introRaf);
+    cancelAnimationFrame(this._landRaf);
+    cancelAnimationFrame(this._tiltRaf);
+  }
+
+  toggleTheme = () => this.setState(s => ({ theme: s.theme === 'dark' ? 'light' : 'dark' }));
+
+  advance = () => {
+    this.setState(s => {
+      const next = Math.min(4, s.step + 1);
+      if (next < 4) this._t = setTimeout(this.advance, 1400);
+      return { step: next };
+    });
+  };
+
+  begin = (name) => {
+    clearTimeout(this._t);
+    this.setState({ fileName: name, step: 1, dragOver: false });
+    this._t = setTimeout(this.advance, 1400);
+  };
+
+  landingVals() {
+    const { landCo, landFrom, landT, intro, tick, mx, my, stageHover } = this.state;
+    const ease = t => 1 - Math.pow(1 - t, 3);
+    const e = ease(landT);
+    const ei = ease(Math.min(1, intro));
+    const from = LAND[landFrom], to = LAND[landCo];
+    const score = Math.round(from[2] + (to[2] - from[2]) * e);
+    const n = LAND.length;
+
+    const ry = (mx - 0.5) * 22;
+    const rx = -(my - 0.5) * 14;
+
+    const depth = [
+      { x: 0, y: 0, z: 90, s: 1, o: 1, b: 0 },
+      { x: 40, y: 34, z: 10, s: 0.95, o: 0.72, b: 0.6 },
+      { x: 74, y: 66, z: -70, s: 0.9, o: 0.44, b: 1.4 },
+      { x: 102, y: 96, z: -150, s: 0.86, o: 0.24, b: 2.2 },
+    ];
+
+    return {
+      statResumes: Math.round(1284 * ei).toLocaleString('en-US'),
+      statCompanies: Math.round(96 * ei),
+      statSeconds: Math.round(38 * ei),
+      tickerText: TICKER[tick % TICKER.length],
+      tickerStyle: `animation: ${tick % 2 ? 'rr-tick2' : 'rr-tick'} 3s ease-in-out both; white-space: nowrap;`,
+
+      onStage: this.onStage,
+      offStage: this.offStage,
+      stageStyle: `position: absolute; inset: 0; transform-style: preserve-3d; transform: rotateX(${rx}deg) rotateY(${ry}deg) translateZ(0);`,
+
+      landScore: score,
+      landRank: LAND_EXTRA[landCo][1],
+      landGap: LAND_EXTRA[landCo][0],
+      floatChipStyle: `position: absolute; left: -34px; top: 34px; display: flex; align-items: center; gap: 8px; height: 34px; padding: 0 14px; border: 1px solid var(--rr-line-strong); border-radius: 999px; background: var(--rr-surface); box-shadow: var(--rr-shadow); transform: translateZ(170px); animation: rr-float 5.5s ease-in-out infinite; white-space: nowrap; z-index: 20;`,
+      floatGapStyle: `position: absolute; right: -18px; bottom: 46px; display: flex; flex-direction: column; gap: 3px; max-width: 190px; padding: 11px 14px; border: 1px solid var(--rr-line-strong); border-radius: var(--radius-md); background: var(--rr-surface); box-shadow: var(--rr-shadow); transform: translateZ(140px); animation: rr-float-2 6.5s ease-in-out infinite; z-index: 20;`,
+
+      landChips: LAND.map((c, i) => {
+        const on = i === landCo;
+        return {
+          name: c[0],
+          pick: this.pickLand(i),
+          style: `height: 28px; padding: 0 11px; border: 1px solid ${on ? 'var(--rr-accent)' : 'var(--rr-line-strong)'}; border-radius: 999px; background: ${on ? 'var(--rr-tint)' : 'transparent'}; color: ${on ? 'var(--rr-accent-text)' : 'var(--rr-muted)'}; font-family: var(--font-heading); font-weight: 500; font-size: 12px; cursor: pointer; transition: all 180ms ease;`,
+        };
+      }),
+
+      landStack: LAND.map((c, i) => {
+        const k = (i - landCo + n) % n;
+        const d = depth[k];
+        const pct = (c[2] / 100) * 360;
+        return {
+          name: c[0],
+          role: c[1],
+          score: c[2],
+          note: c[4],
+          pick: k === 0 ? null : this.pickLand(i),
+          style: `position: absolute; top: 20px; left: 8px; width: 330px; box-sizing: border-box; padding: 18px 20px; display: flex; flex-direction: column; gap: 7px; border: 1px solid ${k === 0 ? 'var(--rr-line-strong)' : 'var(--rr-line)'}; border-radius: var(--radius-lg); background: linear-gradient(155deg, ${k === 0 ? 'rgba(255,255,255,0.05)' : 'rgba(255,255,255,0.02)'}, transparent 40%), var(--rr-surface); box-shadow: ${k === 0 ? '0 24px 48px -12px rgba(0,0,0,0.55), 0 1px 0 rgba(255,255,255,0.05) inset' : `0 ${10 + k * 4}px ${20 + k * 6}px rgba(0,0,0,${0.28 + k * 0.06})`}; transform: translate3d(${d.x}px, ${d.y}px, ${d.z}px) scale(${d.s}); opacity: ${d.o}; z-index: ${10 - k}; cursor: ${k === 0 ? 'default' : 'pointer'}; transition: transform 620ms cubic-bezier(.2,.7,.3,1), opacity 500ms ease, border-color 300ms ease, box-shadow 400ms ease;`,
+          ringStyle: `position: relative; width: 62px; height: 62px; flex-shrink: 0; border-radius: 999px; background: conic-gradient(var(--rr-accent) ${pct * (k === 0 ? ei : 1)}deg, var(--rr-line-strong) 0deg); box-shadow: 0 0 0 1px var(--rr-line) inset;`,
+          rows: c[3].map(r => ({
+            label: r[0],
+            value: `${r[1]} / ${r[2]}`,
+            fillStyle: `width: ${(r[1] / r[2]) * 100 * (k === 0 ? ei : 1)}%; height: 100%; border-radius: 999px; background: var(--rr-accent); transition: width 600ms ease;`,
+          })),
+        };
+      }),
+    };
+  }
+
+  renderVals() {
+    const { theme, step, dragOver, fileName } = this.state;
+    const done = step >= 4;
+
+    const steps = STEPS.map((s, i) => {
+      const n = i + 1;
+      const state = step > n || done ? 'done' : step === n ? 'active' : 'pending';
+      const on = state !== 'pending';
+      return {
+        title: s.title,
+        desc: s.desc,
+        icon: state === 'done' ? 'ph ph-check' : s.icon,
+        dotStyle: `width: 22px; height: 22px; border-radius: 999px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; border: 1px solid ${on ? 'var(--rr-accent)' : 'var(--rr-line-strong)'}; background: ${state === 'done' ? 'var(--rr-tint-strong)' : 'transparent'}; color: ${on ? 'var(--rr-accent)' : 'var(--rr-muted)'}; ${state === 'active' ? 'animation: rr-pulse 1.4s ease-in-out infinite;' : ''}`,
+        railStyle: `width: 1px; flex: 1; min-height: ${i === STEPS.length - 1 ? '0px' : '34px'}; background: ${step > n || done ? 'var(--rr-accent)' : 'var(--rr-line-strong)'};`,
+        titleStyle: `font-family: var(--font-heading); font-weight: 500; font-size: 14px; color: ${on ? 'var(--rr-text)' : 'var(--rr-muted)'};`,
+        barStyle: `margin-top: 10px; height: 3px; border-radius: 999px; overflow: hidden; background: var(--rr-line-strong); display: ${state === 'active' ? 'block' : 'none'};`,
+        barFillStyle: 'width: 40%; height: 100%; border-radius: 999px; background: var(--rr-accent); animation: rr-sweep 1.2s ease-in-out infinite;',
+      };
+    });
+
+    const names = [
+      ['Texas Instruments', 'Digital Intern · 3 roles', 'Texas_Instruments.png'],
+      ['Google', 'SWE · 4 roles', 'Google.png'],
+      ['Nvidia', 'Systems · 4 roles', 'Nvidia.png'],
+      ['Goldman Sachs', 'Quant · 2 roles', 'Goldman_Sachs.png'],
+      ['Infosys', 'Platform · 5 roles', 'Infosys.png'],
+      ['Microsoft', 'Cloud · 6 roles', 'Microsoft.png'],
+      ['TCS', 'Digital · 7 roles', 'TCS.png'],
+      ['Amazon', 'SDE-1 · 8 roles', 'Amazon.png'],
+    ];
+
+    const { screen, tab, openRank, search, branch, dsa, maxCpi, page, addOpen } = this.state;
+
+    const q = (search || '').toLowerCase().trim();
+    const filtered = COMPANIES.filter(([name, role, , cpi, needsDsa, , branches, skills]) => {
+      if (q && !(name + ' ' + role + ' ' + skills.join(' ')).toLowerCase().includes(q)) return false;
+      if (branch && branches.indexOf(branch) === -1) return false;
+      if (dsa === 'yes' && !needsDsa) return false;
+      if (dsa === 'no' && needsDsa) return false;
+      if (maxCpi && cpi > Number(maxCpi)) return false;
+      return true;
+    });
+    const totalPages = Math.max(1, Math.ceil(filtered.length / PER_PAGE));
+    const curPage = Math.min(page || 1, totalPages);
+    const paged = filtered.slice((curPage - 1) * PER_PAGE, curPage * PER_PAGE);
+    const ver = this.state.version === undefined ? 3 : this.state.version;
+    const verStyle = (i) => `height: 32px; padding: 0 12px; border: 0; border-right: 1px solid var(--rr-line-strong); background: ${ver === i ? 'var(--rr-tint-strong)' : 'transparent'}; color: ${ver === i ? 'var(--rr-accent-text)' : 'var(--rr-muted)'}; font-family: var(--font-heading); font-size: 12.5px; cursor: pointer;`;
+    const coFilter = this.state.coFilter || 'all';
+    const filStyle = (k) => `height: 30px; padding: 0 12px; border: 0; border-right: 1px solid var(--rr-line-strong); background: ${coFilter === k ? 'var(--rr-tint-strong)' : 'transparent'}; color: ${coFilter === k ? 'var(--rr-accent-text)' : 'var(--rr-muted)'}; font-family: var(--font-heading); font-size: 12.5px; cursor: pointer;`;
+    const myRows = MY_COMPANIES.filter(r => coFilter === 'all' || r[4] === coFilter);
+    const pts = (arr) => arr.map((v, i) => (i * (520 / (arr.length - 1))).toFixed(1) + ',' + (170 - ((v - 55) / 45) * 160).toFixed(1)).join(' ');
+    const navStyle = (on) => `display: flex; align-items: center; gap: 7px; height: 34px; padding: 0 12px; border: 0; border-radius: var(--radius-md); background: ${on ? 'var(--rr-tint-strong)' : 'transparent'}; color: ${on ? 'var(--rr-accent-text)' : 'var(--rr-muted)'}; font-family: var(--font-heading); font-weight: 500; font-size: 13px; cursor: pointer; white-space: nowrap; flex-shrink: 0;`;
+    const bar = (v, max, h) => `width: ${Math.round((v / max) * 100)}%; height: 100%; border-radius: 999px; background: var(--rr-accent); display: block;`;
+
+    const { loggedIn, notifOpen, profileOpen, authStep, authEmail } = this.state;
+
+    return {
+      ...this.landingVals(),
+      hideLanding: screen !== 'landing' || loggedIn,
+      hideHeader: screen === 'landing' && !loggedIn,
+      hideUpload: screen !== 'upload' || !loggedIn,
+      hideResult: screen !== 'result' || !loggedIn,
+      hideAuth: screen !== 'auth' || loggedIn,
+      goLogin: () => this.setState({ screen: 'auth' }),
+      authTitle: authStep === 'email' ? 'Welcome back' : 'Check your email',
+      authSub: authStep === 'email' ? 'No password needed — we\u2019ll email you a sign-in link.' : 'We sent a sign-in link to ' + (authEmail || 'your inbox') + '. Open it on this device to continue.',
+      hideAuthEmail: authStep !== 'email',
+      hideAuthSent: authStep !== 'sent',
+      authEmail: authEmail,
+      onAuthEmail: (e) => this.setState({ authEmail: e.target.value }),
+      sendLink: () => this.setState({ authStep: 'sent' }),
+      resendLink: () => {},
+      changeEmail: () => this.setState({ authStep: 'email' }),
+      googleSignIn: () => this.setState({ loggedIn: true, screen: 'upload', authStep: 'email' }),
+
+      hideLoggedOut: loggedIn,
+      hideLoggedIn: !loggedIn,
+      toggleNotif: () => this.setState(s => ({ notifOpen: !s.notifOpen, profileOpen: false })),
+      hideNotif: !notifOpen,
+      notifications: NOTIFICATIONS.map(([icon, text, time]) => ({ icon, text, time })),
+      toggleProfile: () => this.setState(s => ({ profileOpen: !s.profileOpen, notifOpen: false })),
+      hideProfile: !profileOpen,
+      signOut: () => this.setState({ loggedIn: false, screen: 'landing', profileOpen: false }),
+
+      hideCompanies: screen !== 'companies',
+      goCompanies: () => this.setState({ screen: 'companies' }),
+      navUploadStyle: navStyle(screen === 'upload' || screen === 'result'),
+      navCompaniesStyle: navStyle(screen === 'companies'),
+
+      search: search || '',
+      branch: branch || '',
+      dsa: dsa || '',
+      maxCpi: maxCpi || '',
+      onSearch: (e) => this.setState({ search: e.target.value, page: 1 }),
+      onBranch: (e) => this.setState({ branch: e.target.value, page: 1 }),
+      onDsa: (e) => this.setState({ dsa: e.target.value, page: 1 }),
+      onCpi: (e) => this.setState({ maxCpi: e.target.value, page: 1 }),
+      clearFilters: () => this.setState({ search: '', branch: '', dsa: '', maxCpi: '', page: 1 }),
+      hideClear: !(q || branch || dsa || maxCpi),
+      resultCount: filtered.length + (filtered.length === 1 ? ' company' : ' companies') + (q || branch || dsa || maxCpi ? ' match your filters' : ' in the index'),
+      hideEmpty: filtered.length > 0,
+      hidePager: totalPages < 2,
+      pageLabel: 'Showing ' + ((curPage - 1) * PER_PAGE + 1) + '–' + Math.min(curPage * PER_PAGE, filtered.length) + ' of ' + filtered.length,
+      prevPage: () => this.setState({ page: Math.max(1, curPage - 1) }),
+      nextPage: () => this.setState({ page: Math.min(totalPages, curPage + 1) }),
+      pages: Array.from({ length: totalPages }, (_, i) => ({
+        n: i + 1,
+        go: () => this.setState({ page: i + 1 }),
+        style: `width: 30px; height: 30px; border-radius: var(--radius-md); cursor: pointer; font-family: var(--font-heading); font-size: 12.5px; border: 1px solid ${curPage === i + 1 ? 'var(--rr-accent)' : 'var(--rr-line-strong)'}; background: ${curPage === i + 1 ? 'var(--rr-tint)' : 'transparent'}; color: ${curPage === i + 1 ? 'var(--rr-accent-text)' : 'var(--rr-muted)'};`,
+      })),
+      pagedCompanies: paged.map(([name, role, file, cpi, needsDsa, visits, , skills]) => ({
+        name, role, cpi: cpi.toFixed(1), skills: skills.slice(0, 4),
+        markStyle: `width: 28px; height: 28px; background: url("logo/${file}") center/contain no-repeat;`,
+        verifiedIcon: visits ? 'ph ph-seal-check' : 'ph',
+        verifiedStyle: `font-size: 14px; flex-shrink: 0; color: var(--rr-accent); display: ${visits ? 'inline' : 'none'};`,
+        dsaLabel: needsDsa ? 'DSA round' : 'No DSA',
+        dsaStyle: `display: inline-flex; align-items: center; white-space: nowrap; padding: 3px 9px; border-radius: 999px; font-size: 11.5px; border: 1px solid ${needsDsa ? 'var(--rr-accent)' : 'var(--rr-line-strong)'}; color: ${needsDsa ? 'var(--rr-accent-text)' : 'var(--rr-muted)'};`,
+      })),
+      hideAts: screen !== 'ats',
+      goAts: () => this.setState({ screen: 'ats' }),
+      navAtsStyle: navStyle(screen === 'ats'),
+      setV1: () => this.setState({ version: 0 }),
+      setV2: () => this.setState({ version: 1 }),
+      setV3: () => this.setState({ version: 2 }),
+      setV4: () => this.setState({ version: 3 }),
+      v1Style: verStyle(0), v2Style: verStyle(1), v3Style: verStyle(2), v4Style: verStyle(3),
+
+      kpis: [
+        ['Your ATS score', String(MY_TREND[ver]), '+' + (MY_TREND[ver] - MY_TREND[0]), true, 'Since your first upload'],
+        ['Eligible companies', '6 of 8', '+2', true, 'Two blocked on hard requirements'],
+        ['Best match', 'Nvidia', '91%', true, 'Systems Software Intern'],
+        ['Median match', '72%', '+5', true, 'Across all eight companies'],
+        ['Missing skills', '5', '2 blocking', false, 'Named in job descriptions you match'],
+      ].map(([label, value, delta, good, sub]) => ({
+        label, value, delta, sub,
+        deltaIcon: good ? 'ph ph-trend-up' : 'ph ph-warning-circle',
+        deltaStyle: `display: inline-flex; align-items: center; gap: 3px; white-space: nowrap; font-size: 11.5px; color: ${good ? 'var(--rr-accent-text)' : 'var(--rr-muted)'};`,
+      })),
+
+      trendLabels: VERSIONS,
+      trendMine: pts(MY_TREND),
+      trendTarget: pts(TARGET_LINE),
+      trendArea: pts(MY_TREND) + ' 520,170 0,170',
+
+      benchmark: BENCHMARK.map(([label, mine, max, top]) => ({
+        label, readout: mine + ' / ' + max,
+        fillStyle: `position: absolute; left: 0; top: 3px; height: 4px; border-radius: 999px; width: ${(mine / max) * 100}%; background: var(--rr-accent);`,
+        markerStyle: `position: absolute; top: 0; left: ${(top / max) * 100}%; width: 2px; height: 10px; border-radius: 1px; background: var(--rr-muted);`,
+      })),
+
+      setFilterAll: () => this.setState({ coFilter: 'all' }),
+      setFilterEligible: () => this.setState({ coFilter: 'eligible' }),
+      setFilterBlocked: () => this.setState({ coFilter: 'blocked' }),
+      filterAllStyle: filStyle('all'),
+      filterEligibleStyle: filStyle('eligible'),
+      filterBlockedStyle: filStyle('blocked'),
+      companyCount: myRows.length + ' of ' + MY_COMPANIES.length + ' shown · re-scored nightly',
+      companyRows: myRows.map(([name, role, file, score, status, blocker]) => ({
+        name, role, score, blocker,
+        markStyle: `width: 18px; height: 18px; display: block; background: url("logo/${file}") center/contain no-repeat;`,
+        barStyle: `width: ${score}%; height: 100%; border-radius: 999px; background: var(--rr-accent); display: block;`,
+        status: status === 'eligible' ? 'Eligible' : 'Blocked',
+        statusStyle: `justify-self: start; display: inline-flex; align-items: center; white-space: nowrap; padding: 3px 10px; border-radius: 999px; font-size: 11.5px; border: 1px solid ${status === 'eligible' ? 'var(--rr-accent)' : 'var(--rr-line-strong)'}; color: ${status === 'eligible' ? 'var(--rr-accent-text)' : 'var(--rr-muted)'};`,
+      })),
+
+      unlocks: UNLOCKS.map(([skill, n, who]) => ({
+        skill, readout: n === 1 ? '1 company' : n + ' companies',
+        barStyle: `width: ${(n / 2) * 100}%; height: 100%; border-radius: 999px; background: var(--rr-accent); display: block;`,
+      })),
+      actions: ACTIONS.map(([text, gain], i) => ({ text, gain, n: i + 1 })),
+
+      history: HISTORY.map(([label, date, file, score], i) => ({
+        label, date, file, score,
+        dotStyle: `width: 9px; height: 9px; border-radius: 999px; background: ${i === HISTORY.length - 1 ? 'var(--rr-accent)' : 'var(--rr-line-strong)'};`,
+        barStyle: `width: ${score}%; height: 100%; border-radius: 999px; background: var(--rr-accent); display: block;`,
+      })),
+
+      hideAddModal: !addOpen,
+      openAdd: () => this.setState({ addOpen: true }),
+      closeAdd: () => this.setState({ addOpen: false }),
+      stop: (e) => e.stopPropagation(),
+
+      hideViewRanking: !done,
+      viewRanking: () => this.setState({ screen: 'result' }),
+      backToUpload: () => this.setState({ screen: 'upload' }),
+
+      atsCategories: ATS.map(([label, v, max]) => ({ label, readout: v + ' / ' + max, fillStyle: bar(v, max) })),
+      feedback: FEEDBACK.map((text, i) => ({ text, n: '0' + (i + 1) })),
+      skills: SKILLS.map((name, i) => ({
+        name,
+        chipStyle: `padding: 5px 11px; border-radius: var(--radius-sm); font-size: 12.5px; border: 1px solid ${i < 6 ? 'var(--rr-accent)' : 'var(--rr-line-strong)'}; color: ${i < 6 ? 'var(--rr-accent-text)' : 'var(--rr-muted)'}; background: ${i < 6 ? 'var(--rr-tint)' : 'transparent'};`,
+      })),
+      experience: EXPERIENCE.map(([role, meta, detail], i) => ({
+        role, meta, detail,
+        dotStyle: `width: 9px; height: 9px; border-radius: 999px; margin-top: 6px; background: ${i === 0 ? 'var(--rr-accent)' : 'var(--rr-line-strong)'};`,
+        railStyle: `width: 1px; flex: 1; background: var(--rr-line-strong); display: ${i === EXPERIENCE.length - 1 ? 'none' : 'block'};`,
+      })),
+      education: EDUCATION.map(([degree, school, gpa, year]) => ({ degree, school, gpa, year })),
+      projects: PROJECTS.map(([title, desc, stack]) => ({ title, desc, stack })),
+      setTabExperience: () => this.setState({ tab: 'Experience' }),
+      setTabEducation: () => this.setState({ tab: 'Education' }),
+      setTabProjects: () => this.setState({ tab: 'Projects' }),
+      tabExperienceStyle: this.tabStyle('Experience'),
+      tabEducationStyle: this.tabStyle('Education'),
+      tabProjectsStyle: this.tabStyle('Projects'),
+      hideExperience: tab !== 'Experience',
+      hideEducation: tab !== 'Education',
+      hideProjects: tab !== 'Projects',
+
+      rankings: RANKINGS.map(([company, role, file, score, eligible, vals, reasons], i) => {
+        const open = openRank === i;
+        return {
+          rank: i + 1, company, role, score,
+          toggle: () => this.setState(s => ({ openRank: s.openRank === i ? -1 : i })),
+          rowStyle: `display: grid; grid-template-columns: 48px 1fr 150px 130px 40px; align-items: center; padding: 13px 24px; cursor: pointer; border-bottom: 1px solid ${open ? 'transparent' : 'var(--rr-line)'}; background: ${open ? 'var(--rr-surface-2)' : 'transparent'};`,
+          markStyle: `width: 18px; height: 18px; display: block; background: url("logo/${file}") center/contain no-repeat;`,
+          barStyle: bar(score, 100),
+          eligLabel: eligible ? 'Eligible' : 'Not eligible',
+          eligStyle: `justify-self: start; display: inline-flex; align-items: center; white-space: nowrap; padding: 3px 10px; border-radius: 999px; font-size: 11.5px; border: 1px solid ${eligible ? 'var(--rr-accent)' : 'var(--rr-line-strong)'}; color: ${eligible ? 'var(--rr-accent-text)' : 'var(--rr-muted)'};`,
+          chevronStyle: `justify-self: end; color: var(--rr-muted); display: flex; transition: transform 160ms ease; transform: rotate(${open ? 180 : 0}deg);`,
+          hideDetail: !open,
+          breakdown: BREAKDOWN_META.map(([label, max], j) => ({ label, readout: vals[j] + ' / ' + max, fillStyle: bar(vals[j], max) })),
+          reasons: reasons.map(([kind, text]) => ({
+            text, icon: REASON_ICON[kind],
+            iconStyle: `font-size: 13px; margin-top: 3px; flex-shrink: 0; color: ${kind === 'ok' ? 'var(--rr-accent)' : 'var(--rr-muted)'};`,
+          })),
+        };
+      }),
+
+      theme,
+      themeIcon: theme === 'dark' ? 'ph ph-sun' : 'ph ph-moon',
+      themeLabel: theme === 'dark' ? 'Light' : 'Dark',
+      steps,
+      companies: names.map(([name, roles, file]) => ({
+        name, roles,
+        markStyle: `width: 24px; height: 24px; background: url("logo/${file}") center/contain no-repeat;`,
+      })),
+      pipelineLabel: done ? 'Complete' : step === 0 ? 'Idle' : 'Step ' + step + ' of 4',
+      footerNote: done ? 'Ranked against 96 companies.' : step === 0 ? 'Drop a resume to begin.' : 'Usually finishes in under a minute.',
+      dropTitle: fileName || 'Drag your resume here',
+      dropSub: done ? 'Analysis complete — view your ranking.' : step > 0 ? 'Processing…' : 'or browse for a PDF / DOCX file',
+      dropzoneStyle: `display: flex; align-items: center; gap: 16px; padding: 20px; border-radius: var(--radius-lg); cursor: pointer; transition: background 160ms ease, border-color 160ms ease; border: 1px dashed ${dragOver ? 'var(--rr-accent)' : 'var(--rr-line-strong)'}; background: ${dragOver ? 'var(--rr-tint-strong)' : 'var(--rr-surface)'};`,
+      toggleTheme: this.toggleTheme,
+      goUpload: () => this.setState({ screen: 'upload' }),
+      resetPipeline: () => { clearTimeout(this._t); this.setState({ step: 0, fileName: null }); },
+      startUpload: () => this.begin('Aditya_Resume_2026.pdf'),
+      onDropzoneKey: (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); this.begin('Aditya_Resume_2026.pdf'); } },
+      onDragOver: (e) => { e.preventDefault(); if (!this.state.dragOver) this.setState({ dragOver: true }); },
+      onDragLeave: () => this.setState({ dragOver: false }),
+      onDrop: (e) => { e.preventDefault(); const f = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0]; this.begin(f ? f.name : 'Resume.pdf'); },
+    };
+  }
+}
+
+</script>
+</body>
+</html>

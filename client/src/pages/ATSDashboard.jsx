@@ -1,380 +1,453 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import CandidateProfile from './CandidateProfile';
-import { getResumes } from '../services/api';
-import { parseJson } from '../utils/scoring';
+import { getResumes, getCompanies } from '../services/api';
+import { getAtsHistory, getBenchmark, getMissingSkills } from '../services/analyticsApi';
+import { parseJson, toPercentScore } from '../utils/scoring';
+import { exportAtsReportPdf } from '../utils/exportPdf';
+import { MissingSkills, AiInsights, AtsTrendChart, CompanyDemand } from '../components/Dashboard/AnalyticsPanels';
 import {
-  PlacementReadiness,
-  HiringFunnel,
-  TopSkills,
-  CandidateSegmentation,
-  CompanySuccessMatrix,
-  CompanyEligibilityDist,
-  ResumeQualityBreakdown,
-  MissingSkills,
-  CompanyDemand,
-  AiInsights,
-  DepartmentComparison,
-  AtsTrendChart,
-  VersionComparison
-} from '../components/Dashboard/AnalyticsPanels';
+  PiFiles, PiBuildings,
+  PiCaretLeft, PiCaretRight, PiCheckCircle, PiXCircle,
+  PiClock, PiArrowRight, PiTarget, PiExport, PiTrendUp, PiWarningCircle
+} from 'react-icons/pi';
+import { useNavigate } from 'react-router-dom';
 
-const getTier = (score) => {
-  if (score >= 85) return { label: 'Elite', color: 'text-[#a78bfa]', bg: 'bg-[#a78bfa]/10 border-[#a78bfa]/30' };
-  if (score >= 70) return { label: 'Strong', color: 'text-secondary', bg: 'bg-secondary/10 border-secondary/30' };
-  if (score >= 50) return { label: 'Average', color: 'text-[#fbbf24]', bg: 'bg-[#fbbf24]/10 border-[#fbbf24]/30' };
-  return { label: 'Weak', color: 'text-[#fb7185]', bg: 'bg-[#fb7185]/10 border-[#fb7185]/30' };
-};
-
-const ScoreBar = ({ score }) => {
-  const { color } = getTier(score);
-  return (
-    <div className="flex items-center gap-2 min-w-[100px]">
-      <div className="flex-1 h-1.5 rounded-full bg-surface-variant/60 overflow-hidden">
-        <div
-          className={`h-full rounded-full transition-all ${
-            score >= 85 ? 'bg-[#a78bfa]' : score >= 70 ? 'bg-secondary' : score >= 50 ? 'bg-[#fbbf24]' : 'bg-[#fb7185]'
-          }`}
-          style={{ width: `${Math.min(score, 100)}%` }}
-        />
-      </div>
-      <span className={`text-xs font-mono font-bold ${color}`}>{score}</span>
+// delta is optional - omitted entirely when there's no honest number to show
+// (matches the design's KPI strip, which pairs each metric with a small
+// up/warning-icon delta badge, rather than fabricating one where the data
+// doesn't support it).
+// One cell of the KPI strip. The strip itself is a single bordered card whose
+// 1px grid gap shows the line colour through as hairline dividers (the design's
+// construction) - so cells must not carry their own border or radius.
+const KPI = ({ label, value, delta, good, sub }) => (
+  <div className="bg-surface px-[18px] py-4 flex flex-col gap-[7px] min-w-0">
+    <span className="text-[11px] font-semibold uppercase tracking-[0.08em] text-muted truncate">{label}</span>
+    <div className="flex items-baseline gap-2 min-w-0">
+      <span className="text-[27px] font-display font-bold text-text leading-none tracking-tight truncate min-w-0" title={String(value)}>{value}</span>
+      {delta != null && (
+        <span className={`inline-flex items-center gap-1 whitespace-nowrap text-[11.5px] shrink-0 ${good ? 'text-accent-text' : 'text-muted'}`}>
+          {good ? <PiTrendUp size={12} /> : <PiWarningCircle size={12} />}
+          {delta}
+        </span>
+      )}
     </div>
-  );
-};
-
-const TierBadge = ({ score }) => {
-  const { label, color, bg } = getTier(score);
-  return (
-    <span className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-semibold uppercase tracking-wider border ${bg} ${color}`}>
-      {label}
-    </span>
-  );
-};
-
-const SkillBadge = ({ skill, highlighted }) => (
-  <span className={`px-2 py-0.5 rounded text-[11px] font-mono ${
-    highlighted
-      ? 'bg-primary/15 border border-primary/30 text-primary-fixed-dim'
-      : 'bg-surface-variant border border-outline-variant/40 text-on-surface-variant'
-  }`}>
-    {skill}
-  </span>
-);
-
-// --- Summary stat card ---
-const StatCard = ({ icon, label, value, sub, accent }) => (
-  <div className="rounded-xl border border-outline-variant bg-surface p-5 flex items-start gap-4 hover:border-primary/30 transition-colors">
-    <div className={`w-10 h-10 rounded-lg flex items-center justify-center shrink-0 ${accent || 'bg-primary/10'}`}>
-      <span className="material-symbols-outlined text-[20px] text-primary">{icon}</span>
-    </div>
-    <div>
-      <p className="text-[11px] font-semibold uppercase tracking-wider text-on-surface-variant mb-1">{label}</p>
-      <p className="text-2xl font-bold text-on-surface font-display">{value}</p>
-      {sub && <p className="text-xs text-on-surface-variant mt-0.5">{sub}</p>}
-    </div>
+    {sub && <span className="text-[11.5px] text-muted leading-tight">{sub}</span>}
   </div>
 );
 
-// --- Inline mini bar chart for score distribution ---
-const DistributionChart = ({ candidates }) => {
-  const buckets = [
-    { label: 'Weak', range: '0–50', color: '#fb7185', count: 0 },
-    { label: 'Average', range: '50–70', color: '#fbbf24', count: 0 },
-    { label: 'Strong', range: '70–85', color: '#34d399', count: 0 },
-    { label: 'Elite', range: '85+', color: '#a78bfa', count: 0 },
-  ];
-
-  candidates.forEach(c => {
-    const s = c.ats_score || 0;
-    if (s >= 85) buckets[3].count++;
-    else if (s >= 70) buckets[2].count++;
-    else if (s >= 50) buckets[1].count++;
-    else buckets[0].count++;
+const BenchmarkCard = ({ latestBreakdown }) => {
+  const { data: benchmark, isLoading } = useQuery({
+    queryKey: ['benchmark'],
+    queryFn: () => getBenchmark().then(r => r.data),
   });
 
-  const max = Math.max(...buckets.map(b => b.count), 1);
-
   return (
-    <div className="rounded-xl border border-outline-variant bg-surface p-5">
-      <div className="flex items-center gap-2 mb-4">
-        <span className="material-symbols-outlined text-primary text-[20px]">bar_chart</span>
-        <h3 className="text-sm font-semibold text-on-surface">ATS Score Distribution</h3>
+    <div className="rounded-xl border border-line bg-surface p-6 h-full flex flex-col overflow-hidden">
+      <div className="flex items-center gap-2 mb-6 shrink-0">
+        <PiTarget className="text-accent" size={20} />
+        <h3 className="text-sm font-semibold text-text m-0">Category vs. top-decile resumes</h3>
       </div>
-      <div className="flex items-end gap-3 h-24">
-        {buckets.map((b) => (
-          <div key={b.label} className="flex-1 flex flex-col items-center gap-1.5">
-            <span className="text-xs font-bold font-mono" style={{ color: b.color }}>{b.count}</span>
-            <div className="w-full rounded-t" style={{
-              height: `${(b.count / max) * 72}px`,
-              minHeight: b.count > 0 ? '4px' : '2px',
-              background: b.count > 0 ? b.color : 'rgba(255,255,255,0.05)',
-            }} />
-            <span className="text-[10px] text-on-surface-variant text-center leading-tight">{b.label}</span>
-            <span className="text-[9px] text-outline font-mono">{b.range}</span>
-          </div>
-        ))}
+      <div className="flex-1 min-h-0 flex flex-col gap-3.5 overflow-y-auto">
+        {isLoading ? (
+          <div className="flex-1 flex items-center justify-center text-[13px] text-muted">Loading...</div>
+        ) : !latestBreakdown || !benchmark ? (
+          <div className="flex-1 flex items-center justify-center text-[13px] text-muted italic">No breakdown available.</div>
+        ) : (
+          Object.entries(benchmark)
+            .filter(([key]) => key !== 'overall_top10')
+            .map(([key, cat]) => {
+              const myScore = latestBreakdown[key] || 0;
+              const myPct = (myScore / cat.max) * 100;
+              const topPct = (cat.top10 / cat.max) * 100;
+              return (
+                <div key={key} className="flex flex-col gap-1.5">
+                  <div className="flex justify-between items-baseline text-[12.5px]">
+                    <span className="text-text">{cat.label}</span>
+                    <span className="text-muted">{myScore} / {cat.max}</span>
+                  </div>
+                  <div className="relative h-2.5">
+                    <div className="absolute inset-y-[3px] left-0 right-0 rounded-full bg-surface-2" />
+                    <div className="absolute top-[3px] left-0 h-1 rounded-full bg-accent" style={{ width: `${myPct}%` }} />
+                    <div className="absolute top-0 w-0.5 h-2.5 rounded-sm bg-muted" style={{ left: `${topPct}%` }} title={`Top 10%: ${cat.top10}`} />
+                  </div>
+                </div>
+              );
+            })
+        )}
+      </div>
+      <span className="text-[11.5px] text-muted leading-relaxed mt-3 shrink-0">The tick shows where the top 10% of scored resumes sit.</span>
+    </div>
+  );
+};
+
+const FixNextList = ({ feedback }) => {
+  const list = Array.isArray(feedback) ? feedback : [];
+  return (
+    <div className="rounded-xl border border-line bg-surface p-6 h-full flex flex-col overflow-hidden">
+      <div className="flex items-center gap-2 mb-6 shrink-0">
+        <PiCheckCircle className="text-accent" size={20} />
+        <h3 className="text-sm font-semibold text-text m-0">Fix these next</h3>
+      </div>
+      <div className="flex-1 min-h-0 overflow-y-auto pr-2">
+        {list.length === 0 ? (
+          <p className="text-[13px] text-muted m-0 italic flex items-center justify-center h-full">No feedback available.</p>
+        ) : (
+          <ul className="flex flex-col gap-3 m-0 p-0 list-none">
+            {list.slice(0, 5).map((f, i) => (
+              <li key={i} className="flex items-start gap-3">
+                <span className="flex items-center justify-center w-5 h-5 rounded-full bg-surface-2 text-muted text-[11px] font-bold shrink-0 mt-0.5">
+                  {i+1}
+                </span>
+                <span className="text-[13px] text-text leading-relaxed">{f}</span>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+    </div>
+  );
+};
+
+const UploadHistory = ({ history, selectedIdx, onSelect }) => {
+  const navigate = useNavigate();
+  const ordered = [...history].reverse(); // newest first for display
+  return (
+    <div className="rounded-xl border border-line bg-surface flex flex-col overflow-hidden h-full">
+      <div className="flex items-center justify-between p-5 border-b border-line bg-surface-2 shrink-0">
+        <div className="flex items-center gap-2">
+          <PiClock className="text-accent" size={20} />
+          <h3 className="text-sm font-semibold text-text m-0">Upload history</h3>
+        </div>
+        <span className="text-[11px] font-semibold uppercase tracking-wider text-muted">{history.length} version{history.length === 1 ? '' : 's'}</span>
+      </div>
+      <div className="flex-1 min-h-0 overflow-y-auto">
+        <table className="w-full text-left border-collapse">
+          <tbody className="divide-y divide-line">
+            {ordered.map((h, i) => {
+              const isLatest = i === 0;
+              const isSelected = selectedIdx === i;
+              return (
+                <tr
+                  key={`${h.resume_id || 'v'}-${h.created_at}`}
+                  className={`hover:bg-surface-2 transition-colors cursor-pointer group ${isSelected ? 'bg-tint' : ''}`}
+                  onClick={() => {
+                    onSelect(i);
+                    if (h.resume_id) navigate(`/resumes/${h.resume_id}`);
+                  }}
+                >
+                  <td className="py-3 px-5">
+                    <span className="inline-flex items-center justify-center px-2 py-0.5 rounded-md bg-surface-2 border border-line text-[11px] font-mono font-medium text-text group-hover:border-accent transition-colors">
+                      {isLatest ? 'Latest' : `v${history.length - i}`}
+                    </span>
+                  </td>
+                  <td className="py-3 px-5 text-[13px] text-muted whitespace-nowrap">
+                    {new Date(h.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                  </td>
+                  <td className="py-3 px-5 text-[13px] text-text font-medium truncate max-w-[150px]">
+                    {h.original_filename || h.name || `Resume v${history.length - i}`}
+                  </td>
+                  <td className="py-3 px-5 text-right">
+                    <span className={`text-[13px] font-bold font-mono ${h.ats_score >= 70 ? 'text-success' : h.ats_score >= 50 ? 'text-warning' : 'text-error'}`}>
+                      {h.ats_score}
+                    </span>
+                  </td>
+                  <td className="py-3 px-5 w-8 text-right text-muted opacity-0 group-hover:opacity-100 transition-opacity">
+                    <PiArrowRight size={16} />
+                  </td>
+                </tr>
+              );
+            })}
+            {history.length === 0 && (
+              <tr>
+                <td colSpan={5} className="py-8 text-center text-[13px] text-muted italic">No uploads found.</td>
+              </tr>
+            )}
+          </tbody>
+        </table>
       </div>
     </div>
   );
 };
 
 const ATSDashboard = () => {
-  const { data: resumesData, isLoading: loading } = useQuery({
+  const { data: resumesData, isLoading } = useQuery({
     queryKey: ['resumes'],
     queryFn: () => getResumes().then(r => r.data),
   });
-  const candidates = Array.isArray(resumesData) ? resumesData : [];
+  // Shares the ['atsHistory'] cache entry with AtsTrendChart - one real network request either way.
+  const { data: historyData } = useQuery({
+    queryKey: ['atsHistory'],
+    queryFn: () => getAtsHistory().then(r => r.data),
+  });
+  const { data: companiesData } = useQuery({
+    queryKey: ['companies'],
+    queryFn: () => getCompanies().then(r => r.data),
+  });
+  // Shares the ['missingSkills'] cache entry with the MissingSkills panel below.
+  const { data: missingSkillsData } = useQuery({
+    queryKey: ['missingSkills'],
+    queryFn: () => getMissingSkills().then(r => r.data),
+  });
 
-  const [search, setSearch] = useState('');
-  const [selectedCandidate, setSelectedCandidate] = useState(null);
+  const resumes = Array.isArray(resumesData) ? resumesData : [];
+  const latestResume = resumes[0]; // backend sorts by created_at DESC
+  // ats_history holds one row per upload event (unlike `resumes`, which holds
+  // one row per candidate email and gets overwritten on re-upload), ordered
+  // oldest -> newest. It's the real version timeline the switcher and the
+  // "since first upload" delta need.
+  const history = Array.isArray(historyData) ? historyData : [];
+  const companies = Array.isArray(companiesData) ? companiesData : [];
+  const missingSkills = Array.isArray(missingSkillsData) ? missingSkillsData : [];
+
+  // Version switcher: index into `orderedHistory` (newest-first). 0 = latest.
+  // Only the "Your ATS score" KPI reacts to the selected version - every other
+  // section always reflects the latest upload, since ats_history only keeps
+  // score + date for older versions (no historical breakdown/skills/rankings
+  // snapshot exists to show for them).
+  const [selectedVersionIdx, setSelectedVersionIdx] = useState(0);
+  const orderedHistory = [...history].reverse();
+  const selectedScore = orderedHistory[selectedVersionIdx]?.ats_score ?? latestResume?.ats_score ?? 0;
+  const firstEverScore = history[0]?.ats_score;
+  const scoreDelta = firstEverScore != null ? selectedScore - firstEverScore : null;
+
+  // Filter state for the All Companies table (derived from latest resume)
+  const [tableFilter, setTableFilter] = useState('all'); // all | eligible | blocked
   const [page, setPage] = useState(1);
-  const PAGE_SIZE = 10;
+  const PER_PAGE = 8;
 
-  useEffect(() => { setPage(1); }, [search]);
+  const latestRankings = parseJson(latestResume?.rankings || '[]').sort((a, b) => {
+    const sa = typeof a.score === 'number' ? a.score : parseFloat(a.score) || 0;
+    const sb = typeof b.score === 'number' ? b.score : parseFloat(b.score) || 0;
+    return sb - sa;
+  });
 
-  // Derived stats
-  const avgAts = candidates.length
-    ? Math.round(candidates.reduce((s, c) => s + (c.ats_score || 0), 0) / candidates.length)
-    : 0;
-  const bestAts = candidates.length ? Math.max(...candidates.map(c => c.ats_score || 0)) : 0;
-  const eligibleCount = candidates.filter(c => {
-    const r = parseJson(c.rankings);
-    return r.some(x => x.eligible);
-  }).length;
+  const filteredRankings = latestRankings.filter(r => {
+    if (tableFilter === 'eligible') return r.eligible;
+    if (tableFilter === 'blocked') return !r.eligible;
+    return true;
+  });
 
-  const filtered = candidates.filter(c =>
-    (c.name || '').toLowerCase().includes(search.toLowerCase()) ||
-    (c.email || '').toLowerCase().includes(search.toLowerCase())
-  );
+  const totalPages = Math.max(1, Math.ceil(filteredRankings.length / PER_PAGE));
+  const pagedRankings = filteredRankings.slice((page - 1) * PER_PAGE, page * PER_PAGE);
 
-  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
-  const pageRows = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+  // KPI values, matching the design's 5 metrics - a delta badge is only shown
+  // where it's honestly derivable from real data, never a placeholder number.
+  const eligibleCount = latestRankings.filter(r => r.eligible).length;
+  const blockedCount = latestRankings.length - eligibleCount;
+  const bestMatch = latestRankings[0];
+  const bestMatchName = bestMatch ? (bestMatch.companyName || (typeof bestMatch.company === 'object' ? bestMatch.company?.name : bestMatch.company)) : null;
+  const matchScores = latestRankings.map(r => Math.round(toPercentScore(r.score))).sort((a, b) => a - b);
+  const medianMatch = matchScores.length
+    ? (matchScores.length % 2 === 1
+        ? matchScores[(matchScores.length - 1) / 2]
+        : Math.round((matchScores[matchScores.length / 2 - 1] + matchScores[matchScores.length / 2]) / 2))
+    : null;
+
+  if (isLoading) {
+    return (
+      <div className="flex-1 flex items-center justify-center bg-bg">
+        <span className="text-muted text-[13px]">Loading dashboard...</span>
+      </div>
+    );
+  }
 
   return (
-    <div className="flex-1 flex min-w-0 h-full overflow-hidden relative">
-      {/* Main content */}
-      <div className={`flex-1 overflow-y-auto px-6 md:px-8 py-8 transition-all duration-300 ${selectedCandidate ? 'lg:mr-[520px]' : ''}`}>
-        <div className="max-w-6xl mx-auto flex flex-col gap-6">
-
-          {/* Page header */}
-          <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-4">
-            <div>
-              <h2 className="text-3xl font-bold text-on-surface tracking-tight">ATS Dashboard</h2>
-              <p className="text-on-surface-variant text-sm mt-1">Analytics and scoring overview for all uploaded resumes</p>
-            </div>
-            <div className="flex items-center gap-3 w-full md:w-auto">
-              <div className="relative flex-1 md:w-80 group">
-                <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-outline text-[20px] group-focus-within:text-primary transition-colors">search</span>
-                <input
-                  type="text"
-                  value={search}
-                  onChange={e => setSearch(e.target.value)}
-                  placeholder="Search candidates..."
-                  className="w-full pl-10 pr-4 py-2.5 rounded-lg bg-surface-container-high border border-outline-variant text-sm text-on-surface placeholder:text-outline focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all"
-                />
-              </div>
-            </div>
+    <div className="flex-1 overflow-y-auto px-6 md:px-8 py-8 bg-bg">
+      <div className="max-w-[1180px] mx-auto flex flex-col gap-6">
+        
+        {/* Header */}
+        <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
+          <div>
+            <h2 className="m-0 text-[32px] font-bold text-text tracking-[-0.02em] font-display">Your ATS dashboard</h2>
+            <p className="m-0 text-[13.5px] text-muted mt-1.5 flex items-center gap-2">
+              {latestResume?.name || 'User'} <span className="w-1 h-1 rounded-full bg-line-strong" />
+              {latestResume?.original_filename || latestResume?.name || 'Latest Upload'} <span className="w-1 h-1 rounded-full bg-line-strong" />
+              Showing metrics for your profile
+            </p>
           </div>
-
-          {/* Placement Readiness Banner */}
-          {!loading && candidates.length > 0 && (
-            <PlacementReadiness candidates={candidates} />
-          )}
-
-          {/* Summary stat cards */}
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-            <StatCard icon="description" label="Total Resumes" value={loading ? '—' : candidates.length} sub="All uploads" />
-            <StatCard icon="query_stats" label="Avg ATS Score" value={loading ? '—' : avgAts} sub="Across all resumes" accent="bg-secondary/10" />
-            <StatCard icon="workspace_premium" label="Best ATS Score" value={loading ? '—' : bestAts} sub="Highest recorded" accent="bg-[#a78bfa]/10" />
-            <StatCard icon="check_circle" label="Eligible" value={loading ? '—' : eligibleCount} sub="For ≥1 company" accent="bg-[#34d399]/10" />
-          </div>
-
-          {!loading && candidates.length > 0 && (
-            <>
-              {/* Analytics Row 1: Funnel & Skills */}
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <HiringFunnel candidates={candidates} />
-                <TopSkills candidates={candidates} />
+          <div className="flex items-center gap-3">
+            {orderedHistory.length > 0 && (
+              <div className="flex bg-surface-2 rounded-lg p-1 border border-line">
+                {orderedHistory.slice(0, 4).map((h, i) => (
+                  <button
+                    key={`${h.resume_id || 'v'}-${h.created_at}`}
+                    onClick={() => setSelectedVersionIdx(i)}
+                    className={`px-3 py-1.5 rounded-md text-[11px] font-semibold uppercase tracking-wider transition-colors border-0 cursor-pointer whitespace-nowrap ${
+                      selectedVersionIdx === i ? 'bg-surface text-text shadow-sm' : 'bg-transparent text-muted hover:text-text'
+                    }`}
+                  >
+                    {i === 0 ? 'Latest' : `v${orderedHistory.length - i}`}
+                  </button>
+                ))}
               </div>
-
-              {/* Analytics Row 2: Segmentation, Eligibility Dist, Quality Breakdown */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <CandidateSegmentation candidates={candidates} />
-                <CompanyEligibilityDist candidates={candidates} />
-                <ResumeQualityBreakdown candidates={candidates} />
-              </div>
-            </>
-          )}
-
-          {/* Score distribution chart */}
-          {!loading && candidates.length > 0 && (
-            <>
-              <DistributionChart candidates={candidates} />
-              <CompanySuccessMatrix candidates={candidates} />
-              
-              {/* Analytics Row 3: Missing Skills & Company Demand */}
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <MissingSkills />
-                <CompanyDemand />
-              </div>
-              
-              {/* AI Insights Panel */}
-              <AiInsights />
-              
-              {/* Analytics Row 4: Department Comparison & ATS Trend */}
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <DepartmentComparison />
-                <AtsTrendChart />
-              </div>
-
-              {/* Analytics Row 5: Version Comparison */}
-              <VersionComparison />
-            </>
-          )}
-
-          {/* Table card */}
-          <div className="rounded-xl overflow-hidden border border-outline-variant bg-surface">
-            <div className="overflow-x-auto">
-              <table className="w-full text-left border-collapse whitespace-nowrap">
-                <thead>
-                  <tr className="border-b border-outline-variant text-[11px] font-semibold uppercase tracking-wider text-on-surface-variant bg-surface-container-high/50">
-                    <th className="py-4 px-4 w-10"></th>
-                    <th className="py-4 px-4">Name</th>
-                    <th className="py-4 px-4">Skills</th>
-                    <th className="py-4 px-4">ATS Score</th>
-                    <th className="py-4 px-4">Tier</th>
-                    <th className="py-4 px-4">Top Match</th>
-                    <th className="py-4 px-4 text-center">Ranked For</th>
-                    <th className="py-4 px-4 text-right">Uploaded</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-outline-variant/40">
-                  {loading
-                    ? Array.from({ length: 6 }).map((_, i) => (
-                        <tr key={i}>
-                          {[1,2,3,4,5,6,7,8].map(j => (
-                            <td key={j} className="py-4 px-4">
-                              <div className="h-3.5 rounded animate-pulse bg-surface-container-highest" style={{ width: `${50 + j * 6}%` }} />
-                            </td>
-                          ))}
-                        </tr>
-                      ))
-                    : filtered.length === 0
-                    ? (
-                        <tr>
-                          <td colSpan={8} className="py-20 text-center text-on-surface-variant">
-                            <span className="material-symbols-outlined text-[52px] block mb-3 text-outline">person_search</span>
-                            <p className="text-sm">No candidates found</p>
-                          </td>
-                        </tr>
-                      )
-                    : pageRows.map((candidate) => {
-                        const skills = parseJson(candidate.skills);
-                        const rankings = parseJson(candidate.rankings);
-                        const atsScore = candidate.ats_score || 0;
-
-                        // Top eligible match by score
-                        const sorted = [...rankings].sort((a, b) => {
-                          const sa = typeof a.score === 'number' ? a.score : parseFloat(a.score) || 0;
-                          const sb = typeof b.score === 'number' ? b.score : parseFloat(b.score) || 0;
-                          return sb - sa;
-                        });
-                        const topMatch = sorted.find(r => r.eligible) || sorted[0];
-                        const topName = topMatch
-                          ? (topMatch.companyName || (typeof topMatch.company === 'object' ? topMatch.company?.name : topMatch.company) || '—')
-                          : '—';
-
-                        const isSelected = selectedCandidate?.id === candidate.id;
-
-                        return (
-                          <tr key={candidate.id}
-                            onClick={() => setSelectedCandidate(isSelected ? null : candidate)}
-                            className={`cursor-pointer group transition-colors ${
-                              isSelected ? 'bg-primary/[0.07]' : 'hover:bg-primary/[0.04]'
-                            }`}>
-                            <td className="py-3.5 px-4 text-center">
-                              <span className={`material-symbols-outlined text-[18px] transition-colors ${isSelected ? 'text-primary' : 'text-outline group-hover:text-primary'}`}>
-                                chevron_right
-                              </span>
-                            </td>
-                            <td className="py-3.5 px-4">
-                              <p className="font-medium text-on-surface text-sm">{candidate.name || '—'}</p>
-                              <p className="text-[11px] font-mono text-on-surface-variant mt-0.5">{candidate.email || ''}</p>
-                            </td>
-                            <td className="py-3.5 px-4">
-                              <div className="flex gap-1.5 flex-wrap">
-                                {skills.slice(0, 3).map((skill, i) => {
-                                  const name = typeof skill === 'object' ? skill.name : skill;
-                                  return <SkillBadge key={i} skill={name} highlighted={i === 0} />;
-                                })}
-                                {skills.length > 3 && (
-                                  <span className="px-2 py-1 rounded-full text-[10px] bg-surface-container-highest border border-outline-variant text-on-surface-variant">
-                                    +{skills.length - 3}
-                                  </span>
-                                )}
-                              </div>
-                            </td>
-                            <td className="py-3.5 px-4">
-                              <ScoreBar score={atsScore} />
-                            </td>
-                            <td className="py-3.5 px-4">
-                              <TierBadge score={atsScore} />
-                            </td>
-                            <td className="py-3.5 px-4">
-                              <span className="text-sm text-on-surface truncate max-w-[140px] block">{topName}</span>
-                            </td>
-                            <td className="py-3.5 px-4 text-center">
-                              <span className="text-sm text-on-surface">{rankings.length}</span>
-                            </td>
-                            <td className="py-3.5 px-4 text-right font-mono text-[11px] text-outline">
-                              {candidate.created_at
-                                ? new Date(candidate.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: '2-digit' })
-                                : '—'}
-                            </td>
-                          </tr>
-                        );
-                      })}
-                </tbody>
-              </table>
-            </div>
-
-            {/* Table Footer */}
-            <div className="border-t border-outline-variant px-6 py-4 flex justify-between items-center bg-surface-container-high/30">
-              <span className="font-mono text-[11px] text-outline">
-                Page {page} of {totalPages} — {filtered.length} of {candidates.length} resumes
-              </span>
-              <div className="flex gap-1.5">
-                {Array.from({ length: totalPages }).map((_, i) => {
-                  const p = i + 1;
-                  return (
-                    <button key={p}
-                      onClick={() => setPage(p)}
-                      className={`w-8 h-8 rounded-lg text-[11px] font-mono font-bold transition-colors border ${
-                        p === page
-                          ? 'bg-primary text-white border-primary'
-                          : 'bg-surface-container-high border-outline-variant/40 text-on-surface-variant hover:text-on-surface'
-                      }`}>
-                      {p}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
+            )}
+            <button
+              onClick={() => exportAtsReportPdf(latestResume)}
+              disabled={!latestResume}
+              className="flex items-center gap-1.5 h-9 px-3.5 border border-accent rounded-lg bg-transparent text-accent font-sans text-[13px] font-medium hover:bg-tint transition-colors disabled:opacity-40 cursor-pointer"
+            >
+              <PiExport size={15} />Export report
+            </button>
           </div>
         </div>
-      </div>
 
-      {/* Slide-out Profile Panel */}
-      {selectedCandidate && (
-        <div className="absolute top-0 right-0 h-full w-full lg:w-[520px] z-20 flex flex-col overflow-y-auto border-l border-outline-variant bg-background"
-          style={{ boxShadow: '-12px 0 48px rgba(0,0,0,0.6)' }}>
-          <CandidateProfile
-            candidate={selectedCandidate}
-            onClose={() => setSelectedCandidate(null)}
+        {/* KPI Strip - single card, hairline-divided columns (see KPI above).
+            Reflows to 2/3/5 columns rather than scrolling sideways, so the last
+            metric is never sliced off at the viewport edge. */}
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-px bg-line border border-line rounded-xl overflow-hidden">
+          <KPI
+            label="Your ATS score"
+            value={selectedScore}
+            delta={scoreDelta != null ? `${scoreDelta >= 0 ? '+' : ''}${scoreDelta}` : null}
+            good={scoreDelta >= 0}
+            sub="Since your first upload"
+          />
+          <KPI
+            label="Eligible companies"
+            value={companies.length ? `${eligibleCount} of ${companies.length}` : eligibleCount}
+            sub={blockedCount > 0 ? `${blockedCount} blocked on requirements` : 'All scored companies'}
+          />
+          <KPI
+            label="Best match"
+            value={bestMatchName || '—'}
+            delta={bestMatch ? `${Math.round(toPercentScore(bestMatch.score))}%` : null}
+            good
+            sub={bestMatch?.companyRole}
+          />
+          <KPI
+            label="Median match"
+            value={medianMatch != null ? `${medianMatch}%` : '—'}
+            sub={latestRankings.length ? `Across all ${latestRankings.length} companies` : undefined}
+          />
+          <KPI
+            label="Missing skills"
+            value={missingSkills.length}
+            delta={blockedCount > 0 ? `${blockedCount} blocking` : null}
+            good={false}
+            sub="Named in job descriptions you match"
           />
         </div>
-      )}
+
+        {resumes.length > 0 ? (
+          <>
+            {/* 2-col: Trend & Benchmark - 1.35fr/1fr per the design, so the
+                chart gets the wider column it was drawn for. */}
+            <div className="grid grid-cols-1 lg:grid-cols-[1.35fr_1fr] gap-6 lg:h-[360px]">
+              <AtsTrendChart />
+              <BenchmarkCard latestBreakdown={latestResume?.ats_breakdown} />
+            </div>
+
+            {/* Companies Table */}
+            <div className="border border-line bg-surface rounded-xl overflow-hidden shadow-sm">
+              <div className="flex items-center justify-between p-5 border-b border-line bg-surface-2">
+                <div className="flex items-center gap-2">
+                  <PiBuildings className="text-accent" size={20} />
+                  <h3 className="text-base font-semibold text-text m-0">All companies</h3>
+                </div>
+                <div className="flex bg-surface rounded-lg p-1 border border-line">
+                  {['all', 'eligible', 'blocked'].map(f => (
+                    <button 
+                      key={f}
+                      onClick={() => { setTableFilter(f); setPage(1); }}
+                      className={`px-3 py-1.5 rounded-md text-[11px] font-semibold uppercase tracking-wider transition-colors border-0 cursor-pointer ${
+                        tableFilter === f ? 'bg-surface-2 text-text shadow-sm' : 'bg-transparent text-muted hover:text-text'
+                      }`}
+                    >
+                      {f}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div className="overflow-x-auto">
+                <table className="w-full text-left border-collapse">
+                  <thead>
+                    <tr className="border-b border-line text-[11px] font-semibold uppercase tracking-wider text-muted bg-surface-2">
+                      <th className="py-3 px-5">Company</th>
+                      <th className="py-3 px-5">Role</th>
+                      <th className="py-3 px-5">Your match</th>
+                      <th className="py-3 px-5">Status</th>
+                      <th className="py-3 px-5">What is holding you back</th>
+                    </tr>
+                  </thead>
+                  <tbody className="text-[13px] divide-y divide-line">
+                    {pagedRankings.map((r, i) => {
+                      const name = r.companyName || (typeof r.company === 'object' ? r.company?.name : r.company) || '—';
+                      const role = r.companyRole || (typeof r.company === 'object' ? r.company?.internship_role : null) || '—';
+                      const score = Math.round(toPercentScore(r.score));
+                      const blocker = r.eligible ? '—' : (r.eligibility_reasons?.[0] || 'Missing criteria');
+                      return (
+                        <tr key={i} className="hover:bg-surface-2 transition-colors">
+                          <td className="py-3.5 px-5 font-medium text-text">{name}</td>
+                          <td className="py-3.5 px-5 text-muted truncate max-w-[160px]">{role}</td>
+                          <td className="py-3.5 px-5">
+                            <div className="flex items-center gap-3">
+                              <span className="w-8 text-right font-mono font-bold text-muted">{score}</span>
+                              <div className="w-24 h-1.5 bg-surface rounded-full overflow-hidden border border-line">
+                                <div className="h-full bg-accent" style={{ width: `${score}%` }} />
+                              </div>
+                            </div>
+                          </td>
+                          <td className="py-3.5 px-5">
+                            {r.eligible ? (
+                              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-success/10 text-success border border-success/20 text-[11px] font-medium whitespace-nowrap">
+                                <PiCheckCircle size={14} weight="fill" /> Eligible
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-error/10 text-error border border-error/20 text-[11px] font-medium whitespace-nowrap">
+                                <PiXCircle size={14} weight="fill" /> Blocked
+                              </span>
+                            )}
+                          </td>
+                          <td className="py-3.5 px-5 text-muted truncate max-w-[200px]" title={blocker}>
+                            {blocker}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                    {pagedRankings.length === 0 && (
+                      <tr>
+                        <td colSpan={5} className="py-8 text-center text-muted italic">No companies found for this filter.</td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+              {totalPages > 1 && (
+                <div className="flex justify-between items-center px-5 py-3 border-t border-line bg-surface-2">
+                  <span className="text-[13px] text-muted">
+                    Showing {(page - 1) * PER_PAGE + 1} to {Math.min(page * PER_PAGE, filteredRankings.length)} of {filteredRankings.length}
+                  </span>
+                  <div className="flex gap-1.5">
+                    <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1} className="w-7 h-7 rounded flex items-center justify-center border border-line bg-surface text-muted disabled:opacity-40 hover:text-text cursor-pointer"><PiCaretLeft /></button>
+                    <button onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page === totalPages} className="w-7 h-7 rounded flex items-center justify-center border border-line bg-surface text-muted disabled:opacity-40 hover:text-text cursor-pointer"><PiCaretRight /></button>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* 2-col: Missing Skills & Fix Next */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 lg:h-[320px]">
+              <MissingSkills />
+              <FixNextList feedback={parseJson(latestResume?.ats_feedback)} />
+            </div>
+
+            {/* 2-col: History & Insights */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 lg:h-[320px]">
+              <UploadHistory history={history} selectedIdx={selectedVersionIdx} onSelect={setSelectedVersionIdx} />
+              <AiInsights />
+            </div>
+
+            {/* Bonus */}
+            <CompanyDemand />
+          </>
+        ) : (
+          <div className="border border-line border-dashed rounded-xl p-16 flex flex-col items-center justify-center text-center">
+            <PiFiles size={48} className="text-muted mb-4 opacity-50" />
+            <h3 className="text-lg font-semibold text-text m-0">No resumes uploaded</h3>
+            <p className="text-muted mt-2 max-w-[40ch]">Upload a resume to see your personalized ATS dashboard, benchmarking, and market insights.</p>
+          </div>
+        )}
+      </div>
     </div>
   );
 };

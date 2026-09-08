@@ -1,12 +1,19 @@
 import json
 import os
 import logging
-from typing import Dict, Any, List, Optional
-from sentence_transformers.cross_encoder import CrossEncoder
-from app.services.embedding_engine import EmbeddingEngine
+import math
+from typing import Dict, Any, List, Optional, Sequence
 from app.core.config import settings
 
 logger = logging.getLogger(__name__)
+
+
+def _sigmoid(logit: float) -> float:
+    """Numerically stable logistic function (plain 1/(1+exp(-x)) overflows for large negative x)."""
+    if logit >= 0:
+        return 1.0 / (1.0 + math.exp(-logit))
+    exp_logit = math.exp(logit)
+    return exp_logit / (1.0 + exp_logit)
 
 _DATA_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "data")
 
@@ -32,10 +39,14 @@ class CompanyMatcher:
     def __new__(cls):
         if cls._instance is None:
             cls._instance = super(CompanyMatcher, cls).__new__(cls)
-            cls._instance._initialize()
         return cls._instance
 
-    def _initialize(self):
+    def _ensure_initialized(self):
+        """Lazily load models on first use."""
+        if self._embedding_engine is not None:
+            return
+        from sentence_transformers.cross_encoder import CrossEncoder
+        from app.services.embedding_engine import EmbeddingEngine
         self._embedding_engine = EmbeddingEngine()
         model_name = settings.CROSS_ENCODER_MODEL_NAME
         logger.info(f"Loading CrossEncoder model: {model_name} (cache: {settings.MODEL_CACHE_DIR})...")
@@ -43,7 +54,15 @@ class CompanyMatcher:
             self._cross_encoder = CrossEncoder(model_name, cache_folder=settings.MODEL_CACHE_DIR)
             logger.info("CrossEncoder loaded successfully.")
         except Exception as e:
-            logger.error(f"Failed to load CrossEncoder {model_name}: {e}")
+            # Non-fatal so uploads still complete, but this must not pass quietly:
+            # without the CrossEncoder every candidate silently forfeits the full
+            # 30-point semantic component, which looks like "bad scores" rather
+            # than a broken deployment.
+            logger.critical(
+                f"SCORING DEGRADED: failed to load CrossEncoder {model_name} from "
+                f"cache '{settings.MODEL_CACHE_DIR}': {e}. All match scores will be "
+                "missing the 30-point cross-encoder component until this is fixed."
+            )
             self._cross_encoder = None
 
     # --- HARD FILTERS ---
@@ -118,13 +137,23 @@ class CompanyMatcher:
     # --- SOFT SCORING ---
 
     def compute_company_score(self, candidate_data: Dict[str, Any], company_data: Dict[str, Any],
-                              resume_text: str, jd_text: str, skip_cross_encoder: bool = False) -> Dict[str, Any]:
+                              resume_text: str, jd_text: str, skip_cross_encoder: bool = False,
+                              enriched_text: Optional[str] = None,
+                              precomputed_cross_encoder: Optional[float] = None) -> Dict[str, Any]:
         """
         Calculates the 100-point soft score for an eligible candidate.
         `skip_cross_encoder` lets callers bypass the expensive CrossEncoder pass
         (e.g. for companies a cheap bi-encoder pre-filter ranked as unlikely
         matches) - the other 70 points are still computed normally.
+
+        `enriched_text` lets a caller pass the flattened resume in rather than
+        having it rebuilt here; it depends only on the candidate, so rebuilding
+        it per-company was pure waste.
+        `precomputed_cross_encoder` lets a caller supply the 0-30 cross-encoder
+        component from one batched predict() covering every company at once
+        (see score_companies_batch), instead of a separate single-pair call here.
         """
+        self._ensure_initialized()
         score = 0.0
         breakdown = {}
 
@@ -164,15 +193,16 @@ class CompanyMatcher:
             exact_matches = set(candidate_skills).intersection(set(company_skills))
             exact_score = min(20.0, (len(exact_matches) / max(1, len(company_skills))) * 20.0)
 
-            # Semantic similarity for unmatched skills
-            unmatched_reqs = set(company_skills) - exact_matches
+            # Semantic similarity for unmatched skills.
+            # Vectorized: one matrix multiply instead of an O(reqs x candidates)
+            # nested loop of scalar cosine calls. Sorted only for determinism -
+            # the sum below is order-independent, so scores are unchanged.
+            unmatched_reqs = sorted(set(company_skills) - exact_matches)
             semantic_score = 0.0
             if unmatched_reqs and candidate_skills:
-                match_sum = 0
-                for req in unmatched_reqs:
-                    best_sim = max([self._embedding_engine.compute_skill_similarity(req, cs) for cs in candidate_skills])
-                    if best_sim > 0.6:  # Threshold for semantic match
-                        match_sum += best_sim
+                best_sims = self._embedding_engine.best_skill_similarities(unmatched_reqs, candidate_skills)
+                # Threshold for semantic match, same 0.6 cutoff as before
+                match_sum = float(best_sims[best_sims > 0.6].sum())
                 semantic_score = min(10.0, (match_sum / len(unmatched_reqs)) * 10.0)
             
             skill_score = exact_score + semantic_score
@@ -184,20 +214,22 @@ class CompanyMatcher:
 
         # 2. Cross-Encoder Match (30 points)
         cross_encoder_score = 0.0
-        if not skip_cross_encoder and self._cross_encoder and jd_text:
+        if precomputed_cross_encoder is not None:
+            # Already computed by a batched pass covering every company at once.
+            cross_encoder_score = precomputed_cross_encoder
+        elif not skip_cross_encoder and self._cross_encoder and jd_text:
             try:
-                # The user astutely noted that raw_text lacks the GitHub stats and Bayesian logic.
-                # So we use the flattened parsed JSON instead of raw_text!
-                enriched_text = self._embedding_engine._flatten_resume(candidate_data)
+                # raw_text lacks the GitHub stats and Bayesian merge results,
+                # so we use the flattened parsed JSON instead of raw_text.
+                if enriched_text is None:
+                    enriched_text = self._embedding_engine._flatten_resume(candidate_data)
                 if enriched_text:
-                    import math
                     # predict expects a list of pairs: [[text1, text2]]
                     logit = float(self._cross_encoder.predict([[jd_text, enriched_text]])[0])
-                    sigmoid = 1 / (1 + math.exp(-logit))
-                    cross_encoder_score = sigmoid * 30.0
+                    cross_encoder_score = _sigmoid(logit) * 30.0
             except Exception as e:
                 logger.error(f"Cross encoder error: {e}")
-        
+
         score += cross_encoder_score
         breakdown["cross_encoder"] = cross_encoder_score
 
@@ -266,9 +298,72 @@ class CompanyMatcher:
             "breakdown": {k: round(v, 2) for k, v in breakdown.items()}
         }
 
+    def batch_cross_encoder_scores(self, jd_texts: Sequence[str], enriched_text: str) -> List[float]:
+        """Run ONE batched CrossEncoder pass over every (jd, resume) pair.
+
+        Previously each company triggered its own single-pair predict() call, so
+        the model's fixed per-call overhead was paid N times. Batching matters
+        far more in production than locally: Cloud Run gives the container a
+        single vCPU, so there are no spare cores to absorb that overhead.
+
+        Returns a 0-30 point contribution per input jd_text, aligned by index.
+        """
+        self._ensure_initialized()
+        if not self._cross_encoder or not enriched_text or not jd_texts:
+            return [0.0] * len(jd_texts)
+
+        pairs = [[jd or "", enriched_text] for jd in jd_texts]
+        try:
+            logits = self._cross_encoder.predict(pairs, batch_size=32)
+        except Exception as e:
+            logger.error(f"Batched cross encoder error: {e}")
+            return [0.0] * len(jd_texts)
+
+        scores = []
+        for idx, jd in enumerate(jd_texts):
+            if not jd:
+                scores.append(0.0)
+                continue
+            try:
+                scores.append(_sigmoid(float(logits[idx])) * 30.0)
+            except (IndexError, TypeError, ValueError):
+                scores.append(0.0)
+        return scores
+
+    def batch_cross_encoder_scores_for_resumes(self, jd_text: str, enriched_texts: Sequence[str]) -> List[float]:
+        """One batched CrossEncoder pass: a single JD against MANY resumes.
+
+        The transpose of batch_cross_encoder_scores, for the company-creation
+        re-rank path where the company is fixed and the resumes vary.
+
+        Returns a 0-30 point contribution per resume, aligned by index.
+        """
+        self._ensure_initialized()
+        if not self._cross_encoder or not jd_text or not enriched_texts:
+            return [0.0] * len(enriched_texts)
+
+        pairs = [[jd_text, enriched or ""] for enriched in enriched_texts]
+        try:
+            logits = self._cross_encoder.predict(pairs, batch_size=32)
+        except Exception as e:
+            logger.error(f"Batched cross encoder (per-resume) error: {e}")
+            return [0.0] * len(enriched_texts)
+
+        scores = []
+        for idx, enriched in enumerate(enriched_texts):
+            if not enriched:
+                scores.append(0.0)
+                continue
+            try:
+                scores.append(_sigmoid(float(logits[idx])) * 30.0)
+            except (IndexError, TypeError, ValueError):
+                scores.append(0.0)
+        return scores
+
     # --- PIPELINES ---
 
     def match_resumes_to_company(self, company_data: Dict[str, Any], all_resumes: List[Dict[str, Any]], top_k: int = 20) -> List[Dict[str, Any]]:
+        self._ensure_initialized()
         """
         Full 2-stage retrieval and ranking pipeline.
         """

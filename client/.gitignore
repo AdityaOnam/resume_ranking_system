@@ -22,3 +22,14 @@
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+
+# design handoff artifacts - large binaries, not app code
+UI/UIDESIGN_RESUME_RANKING.png
+UI/stitch_four_ui_component_replication.zip
+UI/stitch_extracted/screen.png
+.vercel
+.env*
+
+# Claude Code local config - not part of the app, machine/tool-specific.
+.claude/
+CLAUDE.md

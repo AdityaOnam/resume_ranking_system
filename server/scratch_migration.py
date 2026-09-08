@@ -1,14 +1,8 @@
 import psycopg2
-import os
+from app.core.config import get_pg_connection_kwargs
 
 # Connect to the database
-conn = psycopg2.connect(
-    host="db.lvraaokughgsnocpwlgu.supabase.co",
-    database="postgres",
-    user="postgres",
-    password="p6ApS_.Q,2.qB.H",
-    port=5432
-)
+conn = psycopg2.connect(**get_pg_connection_kwargs())
 
 # Open a cursor to perform database operations
 cur = conn.cursor()

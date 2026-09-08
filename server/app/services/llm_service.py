@@ -196,11 +196,10 @@ class _GeminiBackend:
         )
 
     def _rotate_key(self) -> bool:
-        """Advance to the next key. Returns False if all keys have been tried."""
+        """Advance to the next key."""
         self._current_key_index += 1
         if self._current_key_index >= len(self._clients):
             self._current_key_index = 0
-            return False
         return True
 
     def chat_json(self, system_prompt: str, user_content: str, temperature: float = 0.1) -> Optional[Dict[str, Any]]:
@@ -239,12 +238,18 @@ class _GeminiBackend:
                     config=config,
                 )
                 text = response.text
+                if not text:
+                    logger.warning(f"Gemini API (key #{self._current_key_index + 1}) returned empty text. Candidates: {response.candidates}")
+                else:
+                    logger.info(f"Gemini API call succeeded. Response length: {len(text)}")
+                
                 if parse_json:
                     return json.loads(text)
                 return text.strip() if text else ""
 
             except Exception as e:
                 error_str = str(e).lower()
+                logger.error(f"Gemini API call failed (key #{self._current_key_index + 1}): {type(e).__name__} - {error_str}")
                 is_rate_limit = "429" in error_str or "resource_exhausted" in error_str or "quota" in error_str
 
                 if is_rate_limit and self._rotate_key():
@@ -253,13 +258,118 @@ class _GeminiBackend:
                     tried += 1
                     continue
                 else:
-                    logger.error(f"Gemini API call failed (key #{self._current_key_index + 1}): {type(e).__name__}")
                     return None if parse_json else ""
 
         # All keys exhausted
         logger.error("All Gemini API keys exhausted (rate-limited).")
         self._current_key_index = start_index
         return None if parse_json else ""
+
+
+# ===========================================================================
+# Groq Backend
+# ===========================================================================
+
+class _GroqBackend:
+    """Wraps the Groq API client. Used when LLM_PROVIDER=groq.
+
+    Supports multiple API keys with automatic rotation on rate limits (HTTP
+    429), mirroring the Gemini backend - Groq's free tier has per-minute and
+    per-day request caps that a batch of uploads can reach quickly.
+    """
+
+    def __init__(self):
+        from groq import Groq
+        self.model_name = settings.GROQ_MODEL_NAME
+        self._timeout = settings.GROQ_TIMEOUT_SECONDS
+
+        # GROQ_API_KEYS (plural, comma-separated) preferred; GROQ_API_KEY kept
+        # working for backwards compatibility.
+        raw_keys = settings.GROQ_API_KEYS or settings.GROQ_API_KEY
+        self._keys: List[str] = [k.strip() for k in raw_keys.split(",") if k.strip()]
+        if not self._keys:
+            raise ValueError(
+                "LLM_PROVIDER is set to 'groq' but no Groq API key is configured. "
+                "Set GROQ_API_KEYS (comma-separated for rotation) or GROQ_API_KEY "
+                "in your .env file, or as a Cloud Run environment variable."
+            )
+
+        self._clients = [Groq(api_key=key, timeout=self._timeout) for key in self._keys]
+        self._current_key_index = 0
+
+        logger.info(
+            f"LLM Provider: Groq | model={self.model_name} "
+            f"keys={len(self._keys)} timeout={self._timeout}s"
+        )
+
+    def _rotate_key(self):
+        self._current_key_index = (self._current_key_index + 1) % len(self._clients)
+
+    def _execute_with_rotation(self, system_prompt: str, user_content: str,
+                               temperature: float, parse_json: bool):
+        start_index = self._current_key_index
+        tried = 0
+
+        while tried < len(self._clients):
+            client = self._clients[self._current_key_index]
+            try:
+                kwargs = {
+                    "model": self.model_name,
+                    "messages": [
+                        {"role": "system", "content": system_prompt},
+                        {"role": "user", "content": user_content},
+                    ],
+                    "temperature": temperature,
+                }
+                if parse_json:
+                    # Groq's JSON mode requires the word "json" to appear in the
+                    # prompt; both structured prompts above say "valid JSON".
+                    kwargs["response_format"] = {"type": "json_object"}
+
+                response = client.chat.completions.create(**kwargs)
+                content = response.choices[0].message.content
+                if not content:
+                    logger.warning(f"Groq (key #{self._current_key_index + 1}) returned empty content.")
+                    return None if parse_json else ""
+
+                return json.loads(content) if parse_json else content.strip()
+
+            except Exception as e:
+                error_str = str(e).lower()
+                logger.error(
+                    f"Groq API call failed (key #{self._current_key_index + 1}, "
+                    f"model={self.model_name}): {type(e).__name__} - {error_str}"
+                )
+
+                # A decommissioned/misspelled model id is a config error, not a
+                # transient one - rotating keys cannot fix it, so fail fast and
+                # say so plainly rather than burning every key on the same 404.
+                if "404" in error_str or "does not exist" in error_str or "not found" in error_str:
+                    logger.critical(
+                        f"Groq model '{self.model_name}' was rejected as unknown. "
+                        "Set GROQ_MODEL_NAME to a current production model "
+                        "(see https://console.groq.com/docs/models). AI feedback is disabled until fixed."
+                    )
+                    return None if parse_json else ""
+
+                is_rate_limit = "429" in error_str or "rate limit" in error_str or "rate_limit" in error_str
+                if is_rate_limit and len(self._clients) > 1:
+                    self._rotate_key()
+                    logger.warning(f"Groq key rate-limited, rotating to key #{self._current_key_index + 1}")
+                    tried += 1
+                    continue
+                return None if parse_json else ""
+
+        logger.error("All Groq API keys exhausted (rate-limited).")
+        self._current_key_index = start_index
+        return None if parse_json else ""
+
+    def chat_json(self, system_prompt: str, user_content: str, temperature: float = 0.1) -> Optional[Dict[str, Any]]:
+        return self._execute_with_rotation(system_prompt, user_content, temperature, parse_json=True)
+
+    def chat_text(self, system_prompt: str, user_content: str, temperature: float = 0.4) -> str:
+        result = self._execute_with_rotation(system_prompt, user_content, temperature, parse_json=False)
+        return result if result else ""
 
 
 # ===========================================================================
@@ -273,9 +383,11 @@ class LLMService:
             self._backend = _GeminiBackend()
         elif provider == "ollama":
             self._backend = _OllamaBackend()
+        elif provider == "groq":
+            self._backend = _GroqBackend()
         else:
             raise ValueError(
-                f"Unknown LLM_PROVIDER '{provider}'. Must be 'ollama' or 'gemini'."
+                f"Unknown LLM_PROVIDER '{provider}'. Must be 'ollama', 'gemini', or 'groq'."
             )
 
     def extract_resume_data(self, raw_text: str) -> Optional[Dict[str, Any]]:
@@ -309,3 +421,12 @@ class LLMService:
         user_content = f"RESUME TEXT:\n{resume_text}"
         result = self._backend.chat_text(system_prompt, user_content, temperature=0.4)
         return result if result else "Unable to generate general ATS feedback at this time."
+
+_llm_service_instance: Optional[LLMService] = None
+
+def get_llm_service() -> LLMService:
+    """Singleton accessor for LLMService."""
+    global _llm_service_instance
+    if _llm_service_instance is None:
+        _llm_service_instance = LLMService()
+    return _llm_service_instance

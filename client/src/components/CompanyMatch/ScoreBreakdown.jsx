@@ -12,7 +12,7 @@ const ScoreBreakdown = ({ breakdown }) => {
   const entries = Object.entries(CATEGORY_META).filter(([key]) => breakdown && key in breakdown);
 
   if (entries.length === 0) {
-    return <p className="text-xs text-on-surface-variant italic px-1">No score breakdown available.</p>;
+    return <p className="text-[13px] text-muted italic px-1 m-0">No score breakdown available.</p>;
   }
 
   return (
@@ -23,11 +23,11 @@ const ScoreBreakdown = ({ breakdown }) => {
         return (
           <div key={key}>
             <div className="flex justify-between items-baseline mb-1">
-              <span className="text-[11px] text-on-surface-variant">{meta.label}</span>
-              <span className="text-[11px] font-mono text-on-surface-variant">{value}/{meta.max}</span>
+              <span className="text-[11px] text-muted">{meta.label}</span>
+              <span className="text-[11px] font-mono text-muted">{value}/{meta.max}</span>
             </div>
-            <div className="h-1 rounded-full bg-surface-variant/60 overflow-hidden">
-              <div className="h-full rounded-full bg-secondary/70" style={{ width: `${pct}%` }} />
+            <div className="h-1 rounded-full bg-line overflow-hidden">
+              <div className="h-full rounded-full bg-accent" style={{ width: `${pct}%` }} />
             </div>
           </div>
         );

@@ -1,10 +1,11 @@
 import React from 'react';
+import { PiCheckCircle, PiXCircle } from 'react-icons/pi';
 
 const SkillGapTable = ({ eligible, reasons }) => {
   if (eligible) {
     return (
-      <div className="flex items-center gap-2 text-xs text-secondary px-1">
-        <span className="material-symbols-outlined text-[16px]">check_circle</span>
+      <div className="flex items-center gap-2 text-[13px] text-success px-1">
+        <PiCheckCircle size={16} weight="fill" />
         Meets all eligibility requirements.
       </div>
     );
@@ -12,14 +13,14 @@ const SkillGapTable = ({ eligible, reasons }) => {
 
   const reasonList = reasons || [];
   if (reasonList.length === 0) {
-    return <p className="text-xs text-on-surface-variant italic px-1">Not eligible — no reasons recorded.</p>;
+    return <p className="text-[13px] text-muted italic px-1 m-0">Not eligible — no reasons recorded.</p>;
   }
 
   return (
-    <ul className="flex flex-col gap-1.5 px-1">
+    <ul className="flex flex-col gap-1.5 px-1 m-0 p-0 list-none">
       {reasonList.map((reason, i) => (
-        <li key={i} className="flex items-start gap-2 text-xs text-[#fb7185]">
-          <span className="material-symbols-outlined text-[14px] mt-0.5">cancel</span>
+        <li key={i} className="flex items-start gap-2 text-[13px] text-error">
+          <PiXCircle size={16} className="mt-[3px] shrink-0" weight="fill" />
           {reason}
         </li>
       ))}

@@ -1,8 +1,8 @@
 import axios from 'axios';
 import { supabase } from '../contexts/AuthContext';
 
-// In dev, the CRA proxy (package.json "proxy") forwards /api to localhost:8000
-// In production, the frontend is served from the same domain as the backend
+// In dev, set REACT_APP_API_URI in .env.local to point at the backend (see .env.example).
+// In production, the frontend is served from the same domain as the backend, so '/api' works as-is.
 const API_URL = process.env.REACT_APP_API_URI || '/api';
 
 const api = axios.create({

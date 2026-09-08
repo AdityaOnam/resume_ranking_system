@@ -1,3 +1,4 @@
+--extra-index-url https://download.pytorch.org/whl/cpu
 fastapi
 uvicorn
 supabase
@@ -18,3 +19,4 @@ openpyxl>=3.1.0
 # LLM Providers
 ollama>=0.1.0
 google-genai
+groq>=0.5.0

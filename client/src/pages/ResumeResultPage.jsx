@@ -1,6 +1,7 @@
 import React from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
+import { PiSpinnerGap, PiWarningCircle } from 'react-icons/pi';
 import CandidateProfile from './CandidateProfile';
 import { getResumeById } from '../services/api';
 
@@ -19,8 +20,8 @@ const ResumeResultPage = () => {
 
   if (loading) {
     return (
-      <div className="flex-1 flex flex-col items-center justify-center p-8 text-on-surface-variant">
-        <span className="material-symbols-outlined text-4xl animate-spin mb-4">refresh</span>
+      <div className="flex-1 flex flex-col items-center justify-center p-8 text-muted bg-bg">
+        <PiSpinnerGap size={40} className="animate-spin mb-4 text-accent" />
         <p>Loading result...</p>
       </div>
     );
@@ -28,11 +29,11 @@ const ResumeResultPage = () => {
 
   if (error || !candidate) {
     return (
-      <div className="flex-1 flex flex-col items-center justify-center p-8 text-on-surface-variant">
-        <span className="material-symbols-outlined text-4xl text-error mb-4">error</span>
+      <div className="flex-1 flex flex-col items-center justify-center p-8 text-muted bg-bg">
+        <PiWarningCircle size={40} className="text-error mb-4" />
         <p className="text-error">{error || 'Resume not found'}</p>
-        <button 
-          className="mt-6 btn btn-outline"
+        <button
+          className="mt-6 h-10 px-5 rounded-lg border border-line-strong bg-transparent text-text font-sans text-sm hover:border-accent hover:text-accent transition-colors"
           onClick={() => navigate('/')}
         >
           Go Back

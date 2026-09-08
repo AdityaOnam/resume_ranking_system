@@ -11,7 +11,7 @@ from app.core.database import supabase
 from app.services.resume_parser import ResumeParser
 from app.services.rank_service import generate_rankings
 from app.services.embedding_engine import EmbeddingEngine
-from app.services.ats_scorer import calculate_general_score
+from app.services.ats_scorer import calculate_general_score, generate_gap_analysis
 import asyncio
 from app.core.security import get_current_user, User
 from fastapi import Depends
@@ -104,7 +104,18 @@ def _delete_from_storage(storage_key: str):
 
 @router.get("/", response_model=List[dict])
 def get_resumes(current_user: User = Depends(get_current_user)):
-    res = supabase.table("resumes").select("id, name, email, skills, rankings, created_at, ats_score, ats_breakdown, ats_feedback, ats_gap_analysis, raw_text, parsed_data, ats_report").eq("user_id", current_user.id).order("created_at", desc=True).execute()
+    # Deliberately excludes raw_text and parsed_data: this is a list endpoint
+    # feeding dashboards/leaderboards, and shipping every resume's full extracted
+    # text plus its entire parsed JSON on every page load is a large payload for
+    # data the client never reads. Fetch a single resume via GET /{resume_id}
+    # (which still selects *) when the full document is actually needed.
+    # ats_report is also omitted: it duplicates ats_feedback/ats_breakdown/
+    # ats_gap_analysis, which are already selected individually, and no client
+    # code reads it. GET /{resume_id} still selects * for the detail view.
+    res = supabase.table("resumes").select(
+        "id, name, email, skills, rankings, created_at, "
+        "ats_score, ats_breakdown, ats_feedback, ats_gap_analysis"
+    ).eq("user_id", current_user.id).order("created_at", desc=True).execute()
     return res.data
 
 @router.get("/status/{job_id}")
@@ -180,11 +191,14 @@ def _do_parse(file_path: str):
 def _do_embed(mapped_resume: dict):
     return embedding_engine.generate_resume_embedding(mapped_resume)
 
-def _do_ats(parsed_data: dict, resume_text: str):
-    return calculate_general_score(parsed_data, resume_text)
+def _do_ats(parsed_data: dict, resume_text: str, include_gap_analysis: bool = True):
+    return calculate_general_score(parsed_data, resume_text, include_gap_analysis)
 
 async def process_resume_background(job_id: str, storage_key: str, filename: str, user_id: str):
     tmp_path = None
+    # Declared before the try so the finally block can always reach it, even if
+    # the pipeline fails before the task is created.
+    gap_analysis_task = None
     try:
         _update_job(job_id, step="Downloading resume from storage...")
         file_bytes = _download_from_storage(storage_key)
@@ -209,26 +223,64 @@ async def process_resume_background(job_id: str, storage_key: str, filename: str
 
         _update_job(job_id, step="Calculating ATS Score...")
         try:
-            ats_result = await asyncio.to_thread(_do_ats, parsed_resume_data, resume_text)
+            # Deterministic part only - the LLM gap analysis is kicked off below
+            # and awaited after ranking, so its 2-5s of network wait overlaps
+            # with the embedding/matching work instead of stalling the pipeline.
+            ats_result = await asyncio.to_thread(_do_ats, parsed_resume_data, resume_text, False)
             ats_score = ats_result["score"]
             ats_feedback = ats_result["feedback"]
             ats_breakdown = ats_result.get("breakdown", {})
-            ats_gap_analysis = ats_result.get("gap_analysis", "")
+            gap_analysis_task = asyncio.create_task(
+                asyncio.to_thread(generate_gap_analysis, resume_text, ats_result)
+            )
         except Exception:
+            logger.exception(f"ATS scoring failed for job {job_id}")
             ats_score = 0
             ats_feedback = []
             ats_breakdown = {}
-            ats_gap_analysis = ""
+        ats_gap_analysis = ""
+
+        # Embed once, up front: the same vector is needed both to pre-filter
+        # companies during ranking and to persist on the resume row. It used to
+        # be computed twice per upload.
+        _update_job(job_id, step="Generating Embeddings...")
+        resume_embedding = None
+        try:
+            # _flatten_resume reads skills/experience/projects/education, which
+            # parsed_resume_data carries under the same keys mapped_resume does.
+            resume_embedding = await asyncio.to_thread(_do_embed, parsed_resume_data)
+        except Exception:
+            logger.exception(f"Embedding generation failed for job {job_id}")
 
         _update_job(job_id, step="Matching Companies...")
-        companies_res = supabase.table("companies").select("*").execute()
+        # Select only the columns the ranking pass actually reads. `select("*")`
+        # also pulled every company's full jd_text and 384-dim jd_embedding as
+        # JSON on every single upload.
+        # NB: there is no `description` column on companies - the scoring code's
+        # company_data.get("description") fallbacks refer to LLM-parsed JD dicts,
+        # not this table. Naming it here makes PostgREST reject the whole query.
+        companies_res = supabase.table("companies").select(
+            "id, name, role, internship_role, jd_text, jd_embedding, "
+            "skill_set, core_skills, project_keywords, min_gpa, cpi, "
+            "required_branches, branch, dsa_required, min_projects"
+        ).execute()
         companies = companies_res.data
         rankings = []
         if companies:
             try:
-                rankings = await asyncio.to_thread(generate_rankings, parsed_resume_data, resume_text, companies, user_id)
+                rankings = await asyncio.to_thread(
+                    generate_rankings, parsed_resume_data, resume_text, companies, user_id, resume_embedding
+                )
             except Exception:
                 logger.exception(f"Ranking generation failed for job {job_id}")
+
+        # Collect the LLM gap analysis that has been running alongside ranking.
+        if gap_analysis_task is not None:
+            try:
+                ats_gap_analysis = await gap_analysis_task
+            except Exception:
+                logger.exception(f"Gap analysis task failed for job {job_id}")
+                ats_gap_analysis = ""
 
         name_from_file = os.path.splitext(filename)[0].replace("_", " ").replace("-", " ")
         final_name = contact_info.get("name") or name_from_file
@@ -258,17 +310,15 @@ async def process_resume_background(job_id: str, storage_key: str, filename: str
             "user_id": user_id,
         }
 
-        _update_job(job_id, step="Generating Embeddings...")
-        try:
-            embedding = await asyncio.to_thread(_do_embed, mapped_resume)
-            mapped_resume["embedding"] = embedding
-        except Exception:
-            pass
+        # Reuse the vector computed before the ranking pass rather than encoding
+        # the same resume a second time.
+        if resume_embedding is not None:
+            mapped_resume["embedding"] = resume_embedding
 
         db_resume = _strip_null_bytes(mapped_resume)
 
         _update_job(job_id, step="Saving to Database...")
-        existing = supabase.table("resumes").select("id, file_path").eq("email", mapped_resume["email"]).execute()
+        existing = supabase.table("resumes").select("id, file_path").eq("email", mapped_resume["email"]).eq("user_id", user_id).execute()
 
         resume_id = ""
         if existing.data:
@@ -302,7 +352,7 @@ async def process_resume_background(job_id: str, storage_key: str, filename: str
                 })
             try:
                 for chunk in [rankings_to_insert[i:i+100] for i in range(0, len(rankings_to_insert), 100)]:
-                    supabase.table("rankings").upsert(chunk).execute()
+                    supabase.table("rankings").upsert(chunk, on_conflict="resume_id,company_id").execute()
             except Exception as rank_err:
                 logger.error(f"Failed to write rankings for resume {resume_id}: {rank_err}")
 
@@ -335,6 +385,11 @@ async def process_resume_background(job_id: str, storage_key: str, filename: str
         traceback.print_exc()
         _update_job(job_id, status="error", error=str(e))
     finally:
+        # If the pipeline errored before the gap-analysis task was awaited, cancel
+        # it so it doesn't linger as an un-retrieved task.
+        if gap_analysis_task is not None and not gap_analysis_task.done():
+            gap_analysis_task.cancel()
+
         # Always clean up the temp file
         if tmp_path and os.path.exists(tmp_path):
             try:

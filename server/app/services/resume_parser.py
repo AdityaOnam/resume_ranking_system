@@ -22,7 +22,7 @@ from typing import Optional, List, Dict, Any
 import fitz  # PyMuPDF
 
 from app.services.github_service import GitHubService
-from app.services.nlp_model import nlp
+from app.services.nlp_model import get_nlp
 
 def bayesian_confidence_update(prior: float, source_reliability: float, agreement: bool) -> float:
     """Update confidence using Bayes' Theorem."""
