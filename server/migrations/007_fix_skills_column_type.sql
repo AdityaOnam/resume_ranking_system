@@ -6,15 +6,30 @@
 -- Pydantic response validation on GET /resumes/{id} (response_model=ResumeInDB
 -- declares skills: List[Dict[str, Any]]) with a 500 error.
 --
--- Converts existing rows in place: each text element is parsed back into jsonb
--- and re-aggregated into a jsonb array. NULL/empty arrays become '[]'::jsonb.
+-- Postgres doesn't allow a correlated subquery inside ALTER COLUMN ... USING
+-- ("cannot use subquery in transform expression"), so the per-row text[] ->
+-- jsonb conversion is done via a throwaway helper function instead.
+CREATE OR REPLACE FUNCTION _rr_text_array_to_jsonb(arr text[]) RETURNS jsonb AS $$
+DECLARE
+  result jsonb := '[]'::jsonb;
+  elem text;
+BEGIN
+  IF arr IS NULL THEN
+    RETURN '[]'::jsonb;
+  END IF;
+  FOREACH elem IN ARRAY arr LOOP
+    IF elem IS NOT NULL THEN
+      result := result || jsonb_build_array(elem::jsonb);
+    END IF;
+  END LOOP;
+  RETURN result;
+END;
+$$ LANGUAGE plpgsql IMMUTABLE;
+
 ALTER TABLE resumes
   ALTER COLUMN skills TYPE jsonb
-  USING (
-    COALESCE(
-      (SELECT jsonb_agg(elem::jsonb) FROM unnest(skills) AS elem),
-      '[]'::jsonb
-    )
-  );
+  USING _rr_text_array_to_jsonb(skills);
 
 ALTER TABLE resumes ALTER COLUMN skills SET DEFAULT '[]'::jsonb;
+
+DROP FUNCTION _rr_text_array_to_jsonb(text[]);
