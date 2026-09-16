@@ -1,0 +1,176 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* Default is dark theme to match original app state */
+    --rr-bg: #161826;
+    --rr-surface: #1d1f2c;
+    --rr-surface-2: #222534;
+    --rr-line: #2e3140;
+    --rr-line-strong: #42475e;
+    --rr-text: #e9e9ed;
+    --rr-muted: #8e91a1;
+    --rr-accent: #9184d9;
+    --rr-accent-text: #b4a8eb;
+    --rr-tint: rgba(145,132,217,0.10);
+    --rr-tint-strong: rgba(145,132,217,0.18);
+    --rr-shadow: 0 6px 24px rgba(0,0,0,0.45);
+  }
+
+  .light {
+    --rr-bg: #f5f6f8;
+    --rr-surface: #ffffff;
+    --rr-surface-2: #f0f2f5;
+    --rr-line: #e2e4e9;
+    --rr-line-strong: #cdd0d8;
+    --rr-text: #1a1b20;
+    --rr-muted: #686b74;
+    --rr-accent: #796cbf;
+    --rr-accent-text: #5b4e9f;
+    --rr-tint: rgba(121,108,191,0.08);
+    --rr-tint-strong: rgba(121,108,191,0.14);
+    --rr-shadow: 0 6px 24px rgba(41,43,49,0.09);
+  }
+
+  html, body, #root {
+    height: 100%;
+  }
+
+  body {
+    @apply bg-bg text-text antialiased;
+    font-family: 'Inter', sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* Global focus ring per design spec */
+  :focus-visible {
+    outline: 2px solid var(--rr-accent);
+    outline-offset: 2px;
+  }
+  
+  /* Reset browser default focus outlines */
+  *:focus:not(:focus-visible) {
+    outline: none;
+  }
+
+  ::selection {
+    background: var(--rr-tint-strong);
+  }
+
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: var(--rr-line-strong) transparent;
+  }
+
+  *::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+
+  *::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  *::-webkit-scrollbar-thumb {
+    background-color: var(--rr-line);
+    border-radius: 9999px;
+    border: 2px solid transparent;
+    background-clip: content-box;
+  }
+
+  *::-webkit-scrollbar-thumb:hover {
+    background-color: var(--rr-line-strong);
+    background-clip: content-box;
+  }
+}
+
+@layer components {
+  /* Surfaces --------------------------------------------------------------- */
+  .card {
+    @apply bg-surface-2 border border-line rounded-xl;
+  }
+
+  .card-hover {
+    @apply transition-colors duration-200;
+  }
+  .card-hover:hover {
+    border-color: var(--rr-accent);
+  }
+
+  .panel {
+    @apply bg-surface border border-line rounded-xl;
+    box-shadow: var(--rr-shadow);
+  }
+
+  .cyber-panel {
+    @apply bg-surface border border-line rounded-xl p-6;
+    box-shadow: var(--rr-shadow);
+  }
+
+  /* Chips & tags ----------------------------------------------------------- */
+  .chip {
+    @apply inline-flex items-center px-2 py-1 rounded text-[11px] font-mono bg-surface-2 text-text border border-line;
+  }
+
+  .skill-tag {
+    @apply inline-flex items-center rounded-md text-[13px] font-mono;
+    padding: 6px 14px;
+    background-color: var(--rr-tint);
+    color: var(--rr-accent-text);
+    border: 1px solid var(--rr-tint-strong);
+  }
+
+  /* Navigation ------------------------------------------------------------- */
+  .nav-link {
+    @apply flex items-center gap-3 px-4 py-2.5 rounded-lg text-[13px] font-medium text-muted transition-colors;
+  }
+  .nav-link:hover {
+    @apply text-text bg-surface-2;
+  }
+
+  .nav-link-active {
+    @apply flex items-center gap-3 px-4 py-2.5 rounded-lg text-[13px] font-semibold text-accent;
+    background-color: var(--rr-tint);
+    border: 1px solid var(--rr-tint-strong);
+  }
+
+  /* Buttons ---------------------------------------------------------------- */
+  .btn-primary {
+    @apply inline-flex items-center justify-center gap-2 bg-accent text-bg px-5 py-2.5 rounded-lg text-sm font-medium transition-colors;
+  }
+  .btn-primary:hover {
+    filter: brightness(1.1);
+  }
+
+  .btn-ghost {
+    @apply inline-flex items-center justify-center gap-2 bg-surface border border-line text-text px-4 py-2.5 rounded-lg text-sm font-medium transition-colors;
+  }
+  .btn-ghost:hover {
+    @apply border-accent;
+  }
+
+  /* Score badges ----------------------------------------------------------- */
+  .score-badge-high,
+  .score-badge-mid,
+  .score-badge-low {
+    @apply inline-flex items-center justify-center px-2.5 py-1 rounded-full text-xs font-semibold font-mono;
+  }
+  .score-badge-high {
+    background: rgba(34, 197, 94, 0.12);
+    border: 1px solid rgba(34, 197, 94, 0.28);
+    color: #4ade80;
+  }
+  .score-badge-mid {
+    background: rgba(245, 158, 11, 0.12);
+    border: 1px solid rgba(245, 158, 11, 0.28);
+    color: #fbbf24;
+  }
+  .score-badge-low {
+    background: rgba(244, 63, 94, 0.12);
+    border: 1px solid rgba(244, 63, 94, 0.28);
+    color: #fb7185;
+  }
+
+}

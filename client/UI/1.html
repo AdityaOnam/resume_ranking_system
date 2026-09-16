@@ -1,0 +1,500 @@
+<!DOCTYPE html>
+<html class="dark" lang="en">
+
+<head>
+    <meta charset="utf-8">
+    <meta content="width=device-width, initial-scale=1.0" name="viewport">
+    <link
+        href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=block"
+        rel="stylesheet">
+    <link
+        href="https://fonts.googleapis.com/css2?family=Geist:wght@100..900&amp;family=Hanken+Grotesk:wght@100..900&amp;display=swap"
+        rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <script id="tailwind-config">try {
+            tailwind.config = {
+                darkMode: "class",
+                theme: {
+                    extend: {
+                        "colors": {
+                            "primary-fixed-dim": "#c0c1ff",
+                            "tertiary-fixed-dim": "#89ceff",
+                            "on-primary-fixed": "#07006c",
+                            "outline": "#908fa0",
+                            "surface-bright": "#393841",
+                            "error-container": "#93000a",
+                            "background": "#0F1023",
+                            "secondary": "#10B981",
+                            "tertiary-container": "#009ada",
+                            "surface-dim": "#0F1023",
+                            "surface-container-low": "#1A1D3A",
+                            "primary-fixed": "#e1e0ff",
+                            "on-secondary-container": "#00311f",
+                            "secondary-container": "#00a572",
+                            "on-primary-fixed-variant": "#2f2ebe",
+                            "on-tertiary-container": "#002d43",
+                            "inverse-surface": "#e4e1ed",
+                            "inverse-primary": "#494bd6",
+                            "surface-variant": "#2A2E50",
+                            "on-secondary-fixed": "#002113",
+                            "surface-tint": "#c0c1ff",
+                            "surface-container-highest": "#34343d",
+                            "on-background": "#e4e1ed",
+                            "on-error-container": "#ffdad6",
+                            "inverse-on-surface": "#303038",
+                            "on-tertiary": "#00344d",
+                            "primary": "#6c63ff",
+                            "tertiary-fixed": "#c9e6ff",
+                            "on-tertiary-fixed": "#001e2f",
+                            "tertiary": "#89ceff",
+                            "error": "#F43F5E",
+                            "on-secondary-fixed-variant": "#005236",
+                            "surface-container-high": "#2A2E50",
+                            "surface": "#0F1023",
+                            "on-secondary": "#003824",
+                            "on-primary-container": "#ffffff",
+                            "on-surface-variant": "#c7c4d7",
+                            "surface-container": "#1f1f27",
+                            "primary-container": "#8083ff",
+                            "surface-container-lowest": "#0A0B18",
+                            "on-primary": "#ffffff",
+                            "on-surface": "#e4e1ed",
+                            "secondary-fixed": "#6ffbbe",
+                            "on-tertiary-fixed-variant": "#004c6e",
+                            "outline-variant": "#3D416D",
+                            "on-error": "#690005",
+                            "secondary-fixed-dim": "#4edea3"
+                        },
+                        "borderRadius": {
+                            "DEFAULT": "0.25rem",
+                            "lg": "0.5rem",
+                            "xl": "1rem",
+                            "full": "9999px"
+                        },
+                        "spacing": {
+                            "section-gap": "32px",
+                            "card-padding": "20px",
+                            "input-padding": "12px 16px",
+                            "container-margin": "24px",
+                            "gutter": "16px"
+                        },
+                        "fontFamily": {
+                            "label-md": ["Geist"],
+                            "headline-lg": ["Geist"],
+                            "body-lg": ["Geist"],
+                            "headline-md": ["Geist"],
+                            "headline-xl": ["Geist"],
+                            "mono-data": ["Geist"],
+                            "body-md": ["Geist"]
+                        },
+                        "fontSize": {
+                            "label-md": ["12px", { "lineHeight": "1", "letterSpacing": "0.05em", "fontWeight": "500" }],
+                            "headline-lg": ["28px", { "lineHeight": "1.3", "fontWeight": "600" }],
+                            "body-lg": ["16px", { "lineHeight": "1.6", "fontWeight": "400" }],
+                            "headline-md": ["20px", { "lineHeight": "1.4", "fontWeight": "600" }],
+                            "headline-xl": ["36px", { "lineHeight": "1.2", "letterSpacing": "-0.02em", "fontWeight": "700" }],
+                            "mono-data": ["13px", { "lineHeight": "1.4", "fontWeight": "400" }],
+                            "body-md": ["14px", { "lineHeight": "1.5", "fontWeight": "400" }]
+                        }
+                    }
+                }
+            }
+        } catch (_e) { }</script>
+</head>
+
+<body class="antialiased min-h-screen flex flex-col" style="background-color: rgb(19, 18, 27); min-height: 100vh;">
+    <!-- TopAppBar -->
+    <header
+        class="bg-background dark:bg-background border-b border-outline-variant dark:border-outline-variant flex justify-between items-center h-16 px-8 w-full sticky top-0 z-50"
+        style="background-color: rgb(19, 18, 27);">
+        <div class="flex items-center gap-8">
+            <div
+                class="flex items-center gap-2 text-primary dark:text-primary hidden md:block font-headline-xl text-on-surface dark:text-on-surface font-bold">
+                <div
+                    class="w-8 h-8 rounded bg-primary text-on-primary flex items-center justify-center font-bold text-lg leading-none">
+                    R</div>
+                <span class="">ResumeRanker</span>
+            </div>
+            <nav class="hidden md:flex gap-6">
+                <a class="text-on-surface-variant hover:text-on-surface pb-4 pt-4 font-body-md text-body-md hover:text-primary dark:hover:text-primary transition-colors h-16 flex items-center border-b-2 border-transparent"
+                    href="#">Upload Resume</a>
+                <a class="text-primary border-b-2 border-primary pb-4 pt-4 font-body-md text-body-md font-bold h-16 flex items-center"
+                    href="#">Companies</a>
+                <a class="text-on-surface-variant hover:text-on-surface pb-4 pt-4 font-body-md text-body-md hover:text-primary dark:hover:text-primary transition-colors h-16 flex items-center border-b-2 border-transparent"
+                    href="#">ATS Dashboard</a>
+            </nav>
+        </div>
+        <div class="flex items-center gap-4">
+            <button
+                class="w-10 h-10 rounded-full bg-surface-container-high flex items-center justify-center text-on-surface hover:text-primary transition-colors scale-95 hover:scale-100">
+                <span class="material-symbols-outlined" data-original-icon="dark_mode">dark_mode</span>
+            </button>
+        </div>
+    </header>
+    <!-- Main Layout with Sidebar -->
+    <div class="flex flex-1 overflow-hidden">
+        <!-- SideNavBar -->
+        <aside
+            class="bg-surface-container-low border-r border-outline-variant docked full-height left-0 w-60 hidden md:flex flex-col h-full py-6 px-4 shrink-0 overflow-y-auto">
+            <nav class="flex-1 space-y-2">
+                <a class="flex items-center gap-3 px-4 py-3 text-on-surface-variant hover:text-on-surface transition-colors hover:bg-surface-variant rounded-lg font-label-md text-label-md"
+                    href="#">
+                    <span class="material-symbols-outlined" data-original-icon="dashboard">dashboard</span>
+                    Dashboard
+                </a>
+                <a class="flex items-center gap-3 px-4 py-3 text-on-surface-variant hover:text-on-surface transition-colors hover:bg-surface-variant rounded-lg font-label-md text-label-md"
+                    href="#">
+                    <span class="material-symbols-outlined" data-original-icon="cloud_upload">cloud_upload</span>
+                    Upload Resume
+                </a>
+                <a class="flex items-center gap-3 px-4 py-3 bg-primary/10 text-primary border border-primary/20 rounded-lg font-bold font-label-md text-label-md transition-all duration-200"
+                    href="#">
+                    <span class="material-symbols-outlined">business</span>
+                    Companies
+                </a>
+                <a class="flex items-center gap-3 px-4 py-3 text-on-surface-variant hover:text-on-surface transition-colors hover:bg-surface-variant rounded-lg font-label-md text-label-md"
+                    href="#">
+                    <span class="material-symbols-outlined">analytics</span>
+                    ATS Dashboard
+                </a>
+                <div
+                    class="pt-6 pb-2 px-4 font-label-md text-label-md text-on-surface-variant opacity-70 uppercase tracking-wider">
+                    System</div>
+                <a class="flex items-center gap-3 px-4 py-3 text-on-surface-variant hover:text-on-surface transition-colors hover:bg-surface-variant rounded-lg font-label-md text-label-md"
+                    href="#">
+                    <span class="material-symbols-outlined">settings</span>
+                    Settings
+                </a>
+                <a class="flex items-center gap-3 px-4 py-3 text-on-surface-variant hover:text-on-surface transition-colors hover:bg-surface-variant rounded-lg font-label-md text-label-md"
+                    href="#">
+                    <span class="material-symbols-outlined">list_alt</span>
+                    Logs
+                </a>
+                <a class="flex items-center gap-3 px-4 py-3 text-on-surface-variant hover:text-on-surface transition-colors hover:bg-surface-variant rounded-lg font-label-md text-label-md"
+                    href="#">
+                    <span class="material-symbols-outlined">api</span>
+                    API Docs
+                </a>
+            </nav>
+            <div class="mt-auto pt-6">
+                <a class="flex items-center gap-3 px-4 py-3 text-on-surface-variant hover:text-on-surface transition-colors hover:bg-surface-variant rounded-lg font-label-md text-label-md"
+                    href="#">
+                    <span class="material-symbols-outlined">logout</span>
+                    Logout
+                </a>
+            </div>
+        </aside>
+        <!-- Main Content Canvas -->
+        <main class="flex-1 overflow-y-auto p-section-gap bg-background" style="background-color: rgb(19, 18, 27);">
+            <div class="max-w-[1200px] mx-auto space-y-container-margin">
+                <!-- Search & Filters -->
+                <div class="flex flex-col sm:flex-row gap-4 items-center">
+                    <div class="relative flex-1 w-full">
+                        <span
+                            class="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-on-surface-variant">search</span>
+                        <input
+                            class="w-full bg-surface-container-high border border-outline-variant rounded-lg py-3 pl-12 pr-4 text-on-surface placeholder:text-on-surface-variant focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-colors font-body-md text-body-md"
+                            placeholder="Search companies..." type="text">
+                    </div>
+                    <button
+                        class="flex items-center gap-2 bg-surface-container-high border border-outline-variant rounded-lg px-6 py-3 text-on-surface hover:border-primary hover:text-primary transition-colors font-label-md text-label-md h-full shrink-0 shadow-sm">
+                        <span class="material-symbols-outlined" style="font-size: 18px;">filter_list</span>
+                        Filters
+                    </button>
+                </div>
+                <!-- Companies Grid -->
+                <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-gutter">
+                    <!-- Card 1 -->
+                    <div
+                        class="bg-surface-container-low border border-outline-variant rounded-xl p-card-padding card-hover transition-all duration-300 flex flex-col gap-4 shadow-sm">
+                        <div class="flex items-center gap-4">
+                            <div
+                                class="w-12 h-12 rounded-lg bg-surface-container-highest flex items-center justify-center text-2xl overflow-hidden shrink-0 border border-outline-variant/30">
+                                <img class="object-contain w-8 h-8"
+                                    data-alt="Microsoft corporate logo icon in minimalist modern flat design style on dark background"
+                                    src="https://lh3.googleusercontent.com/aida-public/AB6AXuBlaf-dZJPUwIYoyQWl6pdQWvp9TOzVFM7fT88FqzRnnxKIGINB2SlvSRIjpA-bSG3car9Lw8Vf4IOohHaz1ExWNJjNgwxh9Q1AioxlV4nlb0cm-pJuLJemAJ8lUgZG3r4wPy_XYzOCqmQnWFWk0TvOKEI6fIjC-xCD-gSpQJxnvDsjQlVTuZVRACPJHqDJgzxkbvNE31-rvooK0_POUQ9M2HCkXZpk3gQ9Sbg4-dRzU-E25SdrHeoiwwvVnP8A7Bi_6sd0kY5A3eg">
+                            </div>
+                            <div>
+                                <h3 class="font-headline-md text-headline-md text-on-surface m-0 leading-tight">
+                                    Microsoft</h3>
+                                <div
+                                    class="text-primary font-mono-data text-mono-data flex items-center gap-1 mt-1 opacity-90">
+                                    Min GPA: 8.0
+                                </div>
+                            </div>
+                        </div>
+                        <div>
+                            <div class="font-label-md text-label-md text-on-surface-variant mb-2">Skills:</div>
+                            <div class="flex flex-wrap gap-2">
+                                <span
+                                    class="px-2 py-1 bg-surface-variant text-on-surface-variant rounded text-xs font-mono-data border border-outline-variant/30">C++</span>
+                                <span
+                                    class="px-2 py-1 bg-surface-variant text-on-surface-variant rounded text-xs font-mono-data border border-outline-variant/30">DSA</span>
+                                <span
+                                    class="px-2 py-1 bg-surface-variant text-on-surface-variant rounded text-xs font-mono-data border border-outline-variant/30">System
+                                    Design</span>
+                                <span
+                                    class="px-2 py-1 bg-surface-variant text-on-surface-variant rounded text-xs font-mono-data border border-outline-variant/30">Azure</span>
+                            </div>
+                        </div>
+                        <div class="mt-auto pt-4 border-t border-outline-variant/50 flex flex-col gap-2">
+                            <div class="flex justify-between items-center font-body-md text-body-md">
+                                <span class="text-on-surface-variant">Role:</span>
+                                <span class="text-on-surface font-medium">SDE Intern</span>
+                            </div>
+                            <div class="flex justify-between items-center font-body-md text-body-md">
+                                <span class="text-on-surface-variant">DSA Required:</span>
+                                <span
+                                    class="px-2 py-0.5 rounded text-xs font-bold bg-secondary/10 text-secondary border border-secondary/30">Yes</span>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- Card 2 -->
+                    <div
+                        class="bg-surface-container-low border border-outline-variant rounded-xl p-card-padding card-hover transition-all duration-300 flex flex-col gap-4 shadow-sm">
+                        <div class="flex items-center gap-4">
+                            <div
+                                class="w-12 h-12 rounded-lg bg-surface-container-highest flex items-center justify-center text-2xl overflow-hidden shrink-0 border border-outline-variant/30">
+                                <img class="object-contain w-8 h-8"
+                                    data-alt="Google corporate logo icon G symbol minimal flat tech style"
+                                    src="https://lh3.googleusercontent.com/aida-public/AB6AXuCw0dBIRsK7ViL6s2iZEFOsbXYGzmW6rClFviL0rTnl8fzdX9Jhgfahm5EN3dkPlxYDa93S6QfNvpDkiMRl3WPARsnEoRS0xcmsgMz5twDvCV971-LuW3oKncirPMiiJN7XYoMx3OcwfX165TE4RXmpgaLolKkgrYsD34CHhX_hgbcRvPM8YsD2-3AXx6a1EgYMP5XmJKVW_NV-VqCVTmUzpVCH7C91RhTmTorbLQYbfP4QGVX7JXnx0F4_Pi25ZxP2mqJksfuTIVg">
+                            </div>
+                            <div>
+                                <h3 class="font-headline-md text-headline-md text-on-surface m-0 leading-tight">Google
+                                </h3>
+                                <div
+                                    class="text-primary font-mono-data text-mono-data flex items-center gap-1 mt-1 opacity-90">
+                                    Min GPA: 8.0
+                                </div>
+                            </div>
+                        </div>
+                        <div>
+                            <div class="font-label-md text-label-md text-on-surface-variant mb-2">Skills:</div>
+                            <div class="flex flex-wrap gap-2">
+                                <span
+                                    class="px-2 py-1 bg-surface-variant text-on-surface-variant rounded text-xs font-mono-data border border-outline-variant/30">C++</span>
+                                <span
+                                    class="px-2 py-1 bg-surface-variant text-on-surface-variant rounded text-xs font-mono-data border border-outline-variant/30">Python</span>
+                                <span
+                                    class="px-2 py-1 bg-surface-variant text-on-surface-variant rounded text-xs font-mono-data border border-outline-variant/30">DSA</span>
+                                <span
+                                    class="px-2 py-1 bg-surface-variant text-on-surface-variant rounded text-xs font-mono-data border border-outline-variant/30">System
+                                    Design</span>
+                            </div>
+                        </div>
+                        <div class="mt-auto pt-4 border-t border-outline-variant/50 flex flex-col gap-2">
+                            <div class="flex justify-between items-center font-body-md text-body-md">
+                                <span class="text-on-surface-variant">Role:</span>
+                                <span class="text-on-surface font-medium">SWE Intern</span>
+                            </div>
+                            <div class="flex justify-between items-center font-body-md text-body-md">
+                                <span class="text-on-surface-variant">DSA Required:</span>
+                                <span
+                                    class="px-2 py-0.5 rounded text-xs font-bold bg-secondary/10 text-secondary border border-secondary/30">Yes</span>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- Card 3 -->
+                    <div
+                        class="bg-surface-container-low border border-outline-variant rounded-xl p-card-padding card-hover transition-all duration-300 flex flex-col gap-4 shadow-sm">
+                        <div class="flex items-center gap-4">
+                            <div
+                                class="w-12 h-12 rounded-lg bg-surface-container-highest flex items-center justify-center text-2xl overflow-hidden shrink-0 border border-outline-variant/30">
+                                <img class="object-contain w-8 h-8"
+                                    data-alt="Amazon corporate logo icon simple flat modern dark mode"
+                                    src="https://lh3.googleusercontent.com/aida-public/AB6AXuBPtyNl26QTCa_eSwNJgk_F1d3O7uYOHZ0uUkBXaePy_1KOHxFZF0yJpVMr2SywPXLxv1AoQqZbSzrLmRvPZ7_psm_GVsGhu5MuU9WzFrea0romqkAFX0xbTJPF41du3xnJjNAAKWfhiX1TQWhNuXxWDC2dmmTwoLt4YrLLSCw7X83wU2knGv9h2DlP1_XPVY84WoD7BqoSZg0NaVLzz9QNd7tbkntyfYUdp_EzzJaqq30wSca5BFDDcDjXCeT7opOr0INUnnQM39g">
+                            </div>
+                            <div>
+                                <h3 class="font-headline-md text-headline-md text-on-surface m-0 leading-tight">Amazon
+                                </h3>
+                                <div
+                                    class="text-primary font-mono-data text-mono-data flex items-center gap-1 mt-1 opacity-90">
+                                    Min GPA: 7.5
+                                </div>
+                            </div>
+                        </div>
+                        <div>
+                            <div class="font-label-md text-label-md text-on-surface-variant mb-2">Skills:</div>
+                            <div class="flex flex-wrap gap-2">
+                                <span
+                                    class="px-2 py-1 bg-surface-variant text-on-surface-variant rounded text-xs font-mono-data border border-outline-variant/30">Java</span>
+                                <span
+                                    class="px-2 py-1 bg-surface-variant text-on-surface-variant rounded text-xs font-mono-data border border-outline-variant/30">DSA</span>
+                                <span
+                                    class="px-2 py-1 bg-surface-variant text-on-surface-variant rounded text-xs font-mono-data border border-outline-variant/30">SQL</span>
+                                <span
+                                    class="px-2 py-1 bg-surface-variant text-on-surface-variant rounded text-xs font-mono-data border border-outline-variant/30">System
+                                    Design</span>
+                            </div>
+                        </div>
+                        <div class="mt-auto pt-4 border-t border-outline-variant/50 flex flex-col gap-2">
+                            <div class="flex justify-between items-center font-body-md text-body-md">
+                                <span class="text-on-surface-variant">Role:</span>
+                                <span class="text-on-surface font-medium">SDE Intern</span>
+                            </div>
+                            <div class="flex justify-between items-center font-body-md text-body-md">
+                                <span class="text-on-surface-variant">DSA Required:</span>
+                                <span
+                                    class="px-2 py-0.5 rounded text-xs font-bold bg-secondary/10 text-secondary border border-secondary/30">Yes</span>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- Card 4 -->
+                    <div
+                        class="bg-surface-container-low border border-outline-variant rounded-xl p-card-padding card-hover transition-all duration-300 flex flex-col gap-4 shadow-sm">
+                        <div class="flex items-center gap-4">
+                            <div
+                                class="w-12 h-12 rounded-lg bg-surface-container-highest flex items-center justify-center text-2xl overflow-hidden shrink-0 bg-white border border-outline-variant/30">
+                                <img class="object-contain w-8 h-8"
+                                    data-alt="Adobe red geometric corporate logo icon transparent background minimal"
+                                    src="https://lh3.googleusercontent.com/aida-public/AB6AXuCmZirKxBbN6Nwvm9Gm_1oJsV_g3qwyB1c2d-urZG5KhfHCb_axA7ZocBGwbQnMkkUWA1fXChrzfRPcX-NdvkRDBaCZYdCF-QGLTWIQhbnGwWTUvx8IDm8w-LY0230tFxg2IPfqehRhH69YQb154mi0zCGvy4S-SxH89SxNAjVEe3IeCBBzK4jqrV8bCCefXrG6ghHaQZADImgiL-5Pu-7HweJB_J7p74YR1Q0NAR0fz9xgtii7nQZLlTqzMxx1CvZ3vIdDUfTzrCI">
+                            </div>
+                            <div>
+                                <h3 class="font-headline-md text-headline-md text-on-surface m-0 leading-tight">Adobe
+                                </h3>
+                                <div
+                                    class="text-primary font-mono-data text-mono-data flex items-center gap-1 mt-1 opacity-90">
+                                    Min GPA: 7.5
+                                </div>
+                            </div>
+                        </div>
+                        <div>
+                            <div class="font-label-md text-label-md text-on-surface-variant mb-2">Skills:</div>
+                            <div class="flex flex-wrap gap-2">
+                                <span
+                                    class="px-2 py-1 bg-surface-variant text-on-surface-variant rounded text-xs font-mono-data border border-outline-variant/30">C++</span>
+                                <span
+                                    class="px-2 py-1 bg-surface-variant text-on-surface-variant rounded text-xs font-mono-data border border-outline-variant/30">Algorithms</span>
+                                <span
+                                    class="px-2 py-1 bg-surface-variant text-on-surface-variant rounded text-xs font-mono-data border border-outline-variant/30">ML</span>
+                                <span
+                                    class="px-2 py-1 bg-surface-variant text-on-surface-variant rounded text-xs font-mono-data border border-outline-variant/30">Python</span>
+                            </div>
+                        </div>
+                        <div class="mt-auto pt-4 border-t border-outline-variant/50 flex flex-col gap-2">
+                            <div class="flex justify-between items-center font-body-md text-body-md">
+                                <span class="text-on-surface-variant">Role:</span>
+                                <span class="text-on-surface font-medium">Developer Intern</span>
+                            </div>
+                            <div class="flex justify-between items-center font-body-md text-body-md">
+                                <span class="text-on-surface-variant">DSA Required:</span>
+                                <span
+                                    class="px-2 py-0.5 rounded text-xs font-bold bg-error/10 text-error border border-error/30">No</span>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- Card 5 -->
+                    <div
+                        class="bg-surface-container-low border border-outline-variant rounded-xl p-card-padding card-hover transition-all duration-300 flex flex-col gap-4 shadow-sm">
+                        <div class="flex items-center gap-4">
+                            <div
+                                class="w-12 h-12 rounded-lg bg-surface-container-highest flex items-center justify-center text-2xl overflow-hidden shrink-0 bg-[#047BD5] border border-outline-variant/30">
+                                <img class="object-contain w-6 h-6"
+                                    data-alt="Flipkart yellow bag logo icon minimal style blue background"
+                                    src="https://lh3.googleusercontent.com/aida-public/AB6AXuCazbWaHy2Q9vIdHM_LDFIvLhbBBBmopN_1sehAyRhtKEY1hGuovLH2HtaEJTKPsz5SShuX62ZkoZ8PyK97U9mxjWfQ9nnGNZT1EZiDH4qIJZXx8t5mFubfVOrs4ZyQyPBNLHI1BxBx3gno18BXyWdmWVIgwgs1rwlGvwGBo0pI0gDzwjcfQd9rjxOaEt6VdS7c62gDIrB0F1IgfurZxyA_wFWX2c5aV80J_N7GjoQItsm29M24pBRYtNdLpmwSdkYMrvQ4GcQtZmI">
+                            </div>
+                            <div>
+                                <h3 class="font-headline-md text-headline-md text-on-surface m-0 leading-tight">Flipkart
+                                </h3>
+                                <div
+                                    class="text-primary font-mono-data text-mono-data flex items-center gap-1 mt-1 opacity-90">
+                                    Min GPA: 7.0
+                                </div>
+                            </div>
+                        </div>
+                        <div>
+                            <div class="font-label-md text-label-md text-on-surface-variant mb-2">Skills:</div>
+                            <div class="flex flex-wrap gap-2">
+                                <span
+                                    class="px-2 py-1 bg-surface-variant text-on-surface-variant rounded text-xs font-mono-data border border-outline-variant/30">Java</span>
+                                <span
+                                    class="px-2 py-1 bg-surface-variant text-on-surface-variant rounded text-xs font-mono-data border border-outline-variant/30">DSA</span>
+                                <span
+                                    class="px-2 py-1 bg-surface-variant text-on-surface-variant rounded text-xs font-mono-data border border-outline-variant/30">System
+                                    Design</span>
+                                <span
+                                    class="px-2 py-1 bg-surface-variant text-on-surface-variant rounded text-xs font-mono-data border border-outline-variant/30">SQL</span>
+                            </div>
+                        </div>
+                        <div class="mt-auto pt-4 border-t border-outline-variant/50 flex flex-col gap-2">
+                            <div class="flex justify-between items-center font-body-md text-body-md">
+                                <span class="text-on-surface-variant">Role:</span>
+                                <span class="text-on-surface font-medium">SDE Intern</span>
+                            </div>
+                            <div class="flex justify-between items-center font-body-md text-body-md">
+                                <span class="text-on-surface-variant">DSA Required:</span>
+                                <span
+                                    class="px-2 py-0.5 rounded text-xs font-bold bg-secondary/10 text-secondary border border-secondary/30">Yes</span>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- Card 6 -->
+                    <div
+                        class="bg-surface-container-low border border-outline-variant rounded-xl p-card-padding card-hover transition-all duration-300 flex flex-col gap-4 shadow-sm">
+                        <div class="flex items-center gap-4">
+                            <div
+                                class="w-12 h-12 rounded-lg bg-surface-container-highest flex items-center justify-center text-2xl overflow-hidden shrink-0 border border-outline-variant/30">
+                                <img class="object-contain w-full h-4"
+                                    data-alt="Zomato red text logo minimal modern icon dark layout"
+                                    src="https://lh3.googleusercontent.com/aida-public/AB6AXuBJlhQMc0Vruyn9j5KEd7md-RuHf-ZJdWFmztXVvHAwWelM3RHvo0q0FvJVNue5utOuqC-1zrDvUHzf2rAMmeMDBa-ZxXLtg33rs5IgxvG4Kg9-5G2auBikkK8mtkPkJjd7TBPlpCO3dm63tWF9Iv_EKFDjQiC3zbr4yP5cPDd2W4c5JWTfvnsT6jIjwp73o08NVrtveRYlv0Zw3rteOJU670stzDPXAVX192yktp9uppPmnSCGuLOnpPP4RUDpbq0X34h2owV2myc">
+                            </div>
+                            <div>
+                                <h3 class="font-headline-md text-headline-md text-on-surface m-0 leading-tight">Zomato
+                                </h3>
+                                <div
+                                    class="text-primary font-mono-data text-mono-data flex items-center gap-1 mt-1 opacity-90">
+                                    Min GPA: 7.0
+                                </div>
+                            </div>
+                        </div>
+                        <div>
+                            <div class="font-label-md text-label-md text-on-surface-variant mb-2">Skills:</div>
+                            <div class="flex flex-wrap gap-2">
+                                <span
+                                    class="px-2 py-1 bg-surface-variant text-on-surface-variant rounded text-xs font-mono-data border border-outline-variant/30">Python</span>
+                                <span
+                                    class="px-2 py-1 bg-surface-variant text-on-surface-variant rounded text-xs font-mono-data border border-outline-variant/30">Django</span>
+                                <span
+                                    class="px-2 py-1 bg-surface-variant text-on-surface-variant rounded text-xs font-mono-data border border-outline-variant/30">SQL</span>
+                                <span
+                                    class="px-2 py-1 bg-surface-variant text-on-surface-variant rounded text-xs font-mono-data border border-outline-variant/30">Docker</span>
+                            </div>
+                        </div>
+                        <div class="mt-auto pt-4 border-t border-outline-variant/50 flex flex-col gap-2">
+                            <div class="flex justify-between items-center font-body-md text-body-md">
+                                <span class="text-on-surface-variant">Role:</span>
+                                <span class="text-on-surface font-medium">Backend Intern</span>
+                            </div>
+                            <div class="flex justify-between items-center font-body-md text-body-md">
+                                <span class="text-on-surface-variant">DSA Required:</span>
+                                <span
+                                    class="px-2 py-0.5 rounded text-xs font-bold bg-error/10 text-error border border-error/30">No</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <!-- Pagination & Info -->
+                <div class="flex justify-between items-center pt-4 border-t border-outline-variant/50">
+                    <div class="text-on-surface-variant font-body-md text-body-md">
+                        Showing 1 to 6 of 326 companies
+                    </div>
+                    <div class="flex gap-1">
+                        <button
+                            class="w-8 h-8 rounded flex items-center justify-center bg-surface-container-high text-on-surface-variant hover:bg-surface-variant transition-colors border border-outline-variant/30">
+                            <span class="material-symbols-outlined" style="font-size: 16px;">chevron_left</span>
+                        </button>
+                        <button
+                            class="w-8 h-8 rounded flex items-center justify-center bg-primary text-on-primary font-bold font-mono-data text-mono-data shadow-sm shadow-primary/20">1</button>
+                        <button
+                            class="w-8 h-8 rounded flex items-center justify-center bg-surface-container-high text-on-surface hover:bg-surface-variant transition-colors font-mono-data text-mono-data border border-outline-variant/30">2</button>
+                        <button
+                            class="w-8 h-8 rounded flex items-center justify-center bg-surface-container-high text-on-surface hover:bg-surface-variant transition-colors font-mono-data text-mono-data border border-outline-variant/30">3</button>
+                        <div class="w-8 h-8 flex items-center justify-center text-on-surface-variant">...</div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+</body>
+
+</html>

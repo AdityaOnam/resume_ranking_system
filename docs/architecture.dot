@@ -1,0 +1,23 @@
+digraph G {
+    fontname="Helvetica,Arial,sans-serif"
+    node [fontname="Helvetica,Arial,sans-serif"]
+    edge [fontname="Helvetica,Arial,sans-serif"]
+
+    rankdir=LR;
+    node [shape=box, style=filled, color=lightgrey, fillcolor=white, fontname="Arial"];
+    
+    // Components
+    Frontend [label="React Client\n(Port 3000)", fillcolor="#61dafb", fontcolor=black];
+    FastAPI [label="FastAPI Backend\n(Port 5000)", fillcolor="#059669", fontcolor=white];
+    NLP [label="spaCy / ML Parsing\nResume Ranking Service", fillcolor="#3b82f6", fontcolor=white];
+    Supabase [label="Supabase\n(PostgreSQL)", fillcolor="#10b981", fontcolor=white];
+    
+    // Connections
+    Frontend -> FastAPI [label=" REST API \n(JSON, File Uploads) "];
+    FastAPI -> NLP [label=" Extract & Rank "];
+    NLP -> FastAPI [label=" Scores "];
+    FastAPI -> Supabase [label=" Save / Sync "];
+    Supabase -> FastAPI [label=" Company Data "];
+    
+    {rank=same; FastAPI; NLP}
+}

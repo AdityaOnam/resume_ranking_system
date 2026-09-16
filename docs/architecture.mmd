@@ -1,0 +1,11 @@
+graph LR
+    Frontend["React Client<br>(Port 3000)"]
+    FastAPI["FastAPI Backend<br>(Port 5000)"]
+    NLP["spaCy / ML Parsing<br>(Resume Ranking Service)"]
+    Supabase[("Supabase<br>(PostgreSQL)")]
+
+    Frontend -->|"REST API<br>(JSON, File Uploads)"| FastAPI
+    FastAPI -->|"Extract & Rank"| NLP
+    NLP -->|"Scores"| FastAPI
+    FastAPI -->|"Save / Sync"| Supabase
+    Supabase -->|"Company Data"| FastAPI

@@ -1,0 +1,21 @@
+.env
+.env.*
+venv/
+uploads/
+__pycache__/
+*.pyc
+*.pyo
+assets/models/cache/
+.git/
+*.log
+test_*.py
+scratch_*.py
+*.sql
+
+# Direct-Postgres maintenance scripts. Dev-only, never used by the running API,
+# and they connect with the superuser 'postgres' account - keep them out of the
+# shipped image entirely.
+check_schema.py
+alter_jobs.py
+backfill_*.py
+generate_sql.py

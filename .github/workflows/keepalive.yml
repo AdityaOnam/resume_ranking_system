@@ -1,0 +1,83 @@
+name: Keep services awake
+
+# Two independent problems this solves:
+#
+#  1. Cloud Run scales to zero. A cold container must import torch and load
+#     three ML models before it can serve an upload (~30-50s on 1 vCPU). Hitting
+#     /warmup - NOT / - forces those models to load, because they are lazy-loaded
+#     on first use and a plain ping leaves them unloaded.
+#
+#  2. Supabase pauses free-tier projects after ~7 days of inactivity, and
+#     unpausing is manual. One trivial query is enough to prevent it.
+#
+# This is best-effort, not a guarantee: Cloud Run may still reclaim an instance,
+# and a concurrent request can spin up a second cold one. `min-instances=1` is
+# the only guaranteed fix, but it ends the $0/month bill.
+#
+# Required repository secrets (Settings > Secrets and variables > Actions):
+#   CLOUD_RUN_URL      e.g. https://your-service-xyz.a.run.app   (no trailing slash)
+#   SUPABASE_URL       e.g. https://your-project-ref.supabase.co
+#   SUPABASE_ANON_KEY  the anon/public key - safe here, protected by RLS.
+#                      Never put the service-role key in this file.
+
+on:
+  schedule:
+    # Every 10 minutes. GitHub throttles scheduled workflows on busy runners,
+    # so actual timing drifts - fine for keep-warm, not a hard guarantee.
+    - cron: "*/10 * * * *"
+  workflow_dispatch: {}
+
+jobs:
+  warm-cloud-run:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Warm the API and verify every model loaded
+        env:
+          CLOUD_RUN_URL: ${{ secrets.CLOUD_RUN_URL }}
+        run: |
+          if [ -z "$CLOUD_RUN_URL" ]; then
+            echo "CLOUD_RUN_URL secret is not set; skipping."
+            exit 0
+          fi
+
+          # --max-time 180 because a genuine cold start loads three models.
+          response=$(curl -sS --max-time 180 "$CLOUD_RUN_URL/warmup") || {
+            echo "Warmup request failed."
+            exit 1
+          }
+          echo "$response"
+
+          # Fail loudly on partial warmup - "degraded" means a model did not
+          # load, which silently corrupts match scores rather than erroring.
+          case "$response" in
+            *'"status":"warm"'*|*'"status": "warm"'*)
+              echo "All models loaded."
+              ;;
+            *)
+              echo "::error::Service reported degraded status - a model failed to load."
+              exit 1
+              ;;
+          esac
+
+  ping-supabase:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Keep the database from auto-pausing
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+        run: |
+          if [ -z "$SUPABASE_URL" ] || [ -z "$SUPABASE_ANON_KEY" ]; then
+            echo "Supabase secrets are not set; skipping."
+            exit 0
+          fi
+
+          code=$(curl -sS --max-time 30 -o /dev/null -w '%{http_code}' \
+            "$SUPABASE_URL/rest/v1/companies?select=id&limit=1" \
+            -H "apikey: $SUPABASE_ANON_KEY")
+
+          echo "Supabase responded with HTTP $code"
+          case "$code" in
+            2*) echo "Database is awake." ;;
+            *)  echo "::error::Unexpected status $code from Supabase."; exit 1 ;;
+          esac
