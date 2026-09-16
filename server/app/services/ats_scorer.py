@@ -1,15 +1,43 @@
 import re
 from typing import Dict, Any, List
 import logging
-from app.services.nlp_model import nlp
-from app.services.llm_service import LLMService
+from app.services.nlp_model import get_nlp
+from app.services.llm_service import get_llm_service
 
 logger = logging.getLogger(__name__)
 
-def calculate_general_score(parsed_data: Dict[str, Any], raw_text: str) -> Dict[str, Any]:
+GAP_ANALYSIS_UNAVAILABLE = (
+    "AI gap analysis could not be generated at this time. "
+    "Please ensure your LLM provider is correctly configured."
+)
+
+
+def generate_gap_analysis(raw_text: str, score_data: Dict[str, Any]) -> str:
+    """Qualitative LLM feedback for an already-computed ATS score.
+
+    Split out of calculate_general_score so callers can start this
+    network-bound call (2-5s on Gemini) and get on with other work rather than
+    blocking the pipeline on it - it depends only on the deterministic score,
+    not on company matching.
+    """
+    try:
+        gap_analysis = get_llm_service().generate_general_ats_feedback(raw_text, score_data)
+    except Exception:
+        logger.exception("Failed to generate LLM gap analysis, falling back to empty.")
+        gap_analysis = ""
+
+    return gap_analysis or GAP_ANALYSIS_UNAVAILABLE
+
+
+def calculate_general_score(parsed_data: Dict[str, Any], raw_text: str,
+                            include_gap_analysis: bool = True) -> Dict[str, Any]:
     """
     Calculates a general, absolute ATS score (0-100) based on resume quality.
     Evaluates contact info, section ordering, quantifiable metrics, action verbs, and keyword density.
+
+    Set include_gap_analysis=False to skip the blocking LLM call and get only the
+    deterministic score; call generate_gap_analysis() separately with the returned
+    payload to fill it in (see the upload pipeline, which overlaps it with ranking).
     """
     score = 0.0
     breakdown = {}
@@ -102,7 +130,7 @@ def calculate_general_score(parsed_data: Dict[str, Any], raw_text: str) -> Dict[
     # 4. Action Verbs (25 points max)
     action_verb_score = 0
     if len(analysis_text.strip()) > 0:
-        doc = nlp(analysis_text)
+        doc = get_nlp()(analysis_text)
         # Find root verbs or past tense verbs
         action_verbs = [token.lemma_.lower() for token in doc if token.pos_ == "VERB" and (token.dep_ == "ROOT" or token.tag_ in ["VBD", "VBN"])]
         
@@ -160,20 +188,14 @@ def calculate_general_score(parsed_data: Dict[str, Any], raw_text: str) -> Dict[
     score += keyword_score
     breakdown["keyword_density"] = keyword_score
 
-    llm_svc = LLMService()
-    try:
-        gap_analysis = llm_svc.generate_general_ats_feedback(
-            raw_text, {"score": int(score), "breakdown": breakdown, "feedback": feedback}
-        )
-    except Exception:
-        logger.exception("Failed to generate LLM gap analysis, falling back to empty.")
-        gap_analysis = ""
-
     result = {
         "score": int(score),
         "breakdown": breakdown,
         "feedback": feedback,
-        "gap_analysis": gap_analysis,
+        "gap_analysis": "",
     }
+
+    if include_gap_analysis:
+        result["gap_analysis"] = generate_gap_analysis(raw_text, result)
 
     return result

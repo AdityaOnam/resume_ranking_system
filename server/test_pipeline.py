@@ -63,34 +63,32 @@ def run_test():
     print("\n[1/4] Running Parser (Extracting structured data)...")
     parser = ResumeParser()
     try:
-        # We bypass file IO and test the internal logic directly
-        parsed_result = parser.parse_text(resume_text) if hasattr(parser, 'parse_text') else None
-        
-        # If parse_text isn't exposed natively, we just call the internal parts
-        if not parsed_result:
-            sections, section_order = parser._split_into_sections(resume_text)
-            contact = parser._extract_contact(resume_text, sections, [])
-            education = parser._extract_education(resume_text, sections)
-            skills = parser._extract_skills(resume_text, sections)
-            experience = parser._extract_experience(resume_text, sections)
-            projects = parser._extract_projects(resume_text, sections)
-            
-            # Simulate LLM extraction
-            llm_data = {}
-            if not MOCK_HEAVY_MODELS:
-                llm_svc = LLMService()
-                llm_data = llm_svc.extract_resume_data(resume_text) or {}
-            else:
-                llm_data = {"skills": ["System Design"]}
-            
-            parsed_data = {
-                "contact": contact,
-                "education": llm_data.get("education") or education,
-                "skills": list(set(skills + llm_data.get("skills", []))),
-                "experience": llm_data.get("experience") or experience,
-                "projects": llm_data.get("projects") or projects,
-                "section_order": section_order
-            }
+        # ResumeParser has no parse_text(); parse() takes a file path. This test
+        # works from a raw string, so it drives the internal section/field
+        # extractors directly. (There used to be a `parser.parse_text(...) if
+        # hasattr(...) else None` guard here whose condition was never true.)
+        sections, section_order = parser._split_into_sections(resume_text)
+        contact = parser._extract_contact(resume_text, sections, [])
+        education = parser._extract_education(resume_text, sections)
+        skills = parser._extract_skills(resume_text, sections)
+        experience = parser._extract_experience(resume_text, sections)
+        projects = parser._extract_projects(resume_text, sections)
+
+        # Simulate LLM extraction
+        if not MOCK_HEAVY_MODELS:
+            llm_svc = LLMService()
+            llm_data = llm_svc.extract_resume_data(resume_text) or {}
+        else:
+            llm_data = {"skills": ["System Design"]}
+
+        parsed_data = {
+            "contact": contact,
+            "education": llm_data.get("education") or education,
+            "skills": list(set(skills + llm_data.get("skills", []))),
+            "experience": llm_data.get("experience") or experience,
+            "projects": llm_data.get("projects") or projects,
+            "section_order": section_order
+        }
     except Exception as e:
         print(f"[ERROR] Parser failed: {e}")
         return

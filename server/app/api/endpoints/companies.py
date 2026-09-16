@@ -3,10 +3,11 @@ from typing import List
 import logging
 from app.models.company import CompanyCreate, CompanyUpdate, CompanyInDB
 from app.core.database import supabase
-from app.services.rank_service import generate_rankings
-from app.services.llm_service import LLMService
+from app.services.rank_service import generate_rankings, rank_resumes_for_company
+from app.services.llm_service import get_llm_service
 from pydantic import BaseModel
 import asyncio
+import concurrent.futures
 from app.core.security import get_current_user, User
 from app.services.embedding_engine import EmbeddingEngine
 
@@ -15,7 +16,7 @@ logger = logging.getLogger(__name__)
 class JDParseRequest(BaseModel):
     text: str
 
-llm_service = LLMService()
+
 embedding_engine = EmbeddingEngine()
 
 router = APIRouter()
@@ -26,7 +27,7 @@ def parse_job_description(req: JDParseRequest):
         raise HTTPException(status_code=400, detail="Job description text is required")
         
     try:
-        parsed_data = llm_service.extract_job_description_data(req.text)
+        parsed_data = get_llm_service().extract_job_description_data(req.text)
         if not parsed_data:
             raise HTTPException(status_code=500, detail="Failed to parse job description")
         return parsed_data
@@ -39,57 +40,84 @@ async def _rerank_resumes_for_new_company(new_company: dict):
 
     Ranking pool is scoped per-user (see rank_service.generate_rankings), so this
     calls generate_rankings once per resume with that resume's own user_id - it
-    only ever touches other resumes belonging to the same user."""
-    resumes = supabase.table("resumes").select("*").execute()
-    for raw_resume in resumes.data or []:
-        try:
-            user_id = raw_resume.get("user_id")
-            if not user_id:
-                logger.warning(f"Skipping resume {raw_resume.get('id')} with no user_id during re-rank.")
-                continue
+    only ever touches other resumes belonging to the same user.
 
-            # We already have parsed_data in the DB model for new resumes
-            # Fallback to the raw resume if parsed_data is not strictly separated
-            resume_data_passed = raw_resume.get("parsed_data") or raw_resume
-            resume_text = raw_resume.get("raw_text") or raw_resume.get("resume_text", "")
+    Companies are global, so every user's resumes must be re-scored here - the
+    unfiltered fetch is intentional. What is NOT intentional is pulling every
+    column: this used to `select("*")`, dragging each resume's full raw_text,
+    parsed_data and 384-dim embedding across the wire for a pass that needs a
+    handful of fields."""
+    resumes = supabase.table("resumes").select(
+        "id, user_id, parsed_data, raw_text, resume_text, rankings, embedding, "
+        "skills, education, experience, projects"
+    ).execute()
 
-            rankings = await asyncio.to_thread(generate_rankings, resume_data_passed, resume_text, [new_company], user_id)
+    company_id = new_company["id"]
+    rows = [r for r in (resumes.data or []) if r.get("user_id")]
+    skipped = len(resumes.data or []) - len(rows)
+    if skipped:
+        logger.warning(f"Skipping {skipped} resume(s) with no user_id during re-rank.")
+    if not rows:
+        return
 
-            if rankings:
-                r = rankings[0]
-                existing_rankings = raw_resume.get('rankings') or []
-                existing_rankings.append({
-                    'company': new_company['id'],
-                    'companyName': new_company.get('name'),
-                    'score': r['score'],
-                    # Use the rank generate_rankings actually computed (this
-                    # resume's position among the user's other resumes for this
-                    # company) - NOT len(existing_rankings), which is just this
-                    # resume's count of other company rankings and unrelated to
-                    # its standing for the new company.
-                    'rank': r['rank'],
-                    'totalResumes': r.get('totalResumes'),
-                    'eligible': r.get('eligible', True),
-                    'eligibility_reasons': r.get('eligibility_reasons', []),
-                    'score_breakdown': r.get('score_breakdown', {})
-                })
-                supabase.table("resumes").update({"rankings": existing_rankings}).eq("id", raw_resume["id"]).execute()
+    # Score every resume against this one company in a single batched pass:
+    # the JD is encoded once and all resumes go through the CrossEncoder
+    # together, instead of one generate_rankings call (and one DB SELECT, and
+    # one single-pair predict) per resume.
+    try:
+        entries = await asyncio.to_thread(rank_resumes_for_company, new_company, rows)
+    except Exception:
+        logger.exception(f"Batched re-rank failed for new company {company_id}.")
+        return
 
-                try:
-                    supabase.table("rankings").upsert({
-                        "resume_id": raw_resume["id"],
-                        "company_id": new_company["id"],
-                        "overall_score": r["score"],
-                        "rank": r["rank"],
-                        "dimension_scores": r.get("score_breakdown", {}),
-                    }).execute()
-                except Exception as rank_e:
-                    logger.error(f"Failed to write to rankings table: {rank_e}")
-        except Exception:
-            logger.exception(
-                f"Failed to re-rank resume {raw_resume.get('id')} for new company {new_company.get('id')}, skipping."
-            )
+    ranking_rows_to_upsert = []
+    resume_updates = []
+
+    for raw_resume in rows:
+        entry = entries.get(raw_resume["id"])
+        if not entry:
             continue
+
+        # Replace any existing entry for this company rather than blindly
+        # appending - re-running this for the same company would otherwise
+        # leave duplicate rankings on the row.
+        existing_rankings = raw_resume.get("rankings") or []
+        for idx, existing in enumerate(existing_rankings):
+            if str(existing.get("company")) == str(company_id):
+                existing_rankings[idx] = entry
+                break
+        else:
+            existing_rankings.append(entry)
+
+        resume_updates.append((raw_resume["id"], existing_rankings))
+        ranking_rows_to_upsert.append({
+            "resume_id": raw_resume["id"],
+            "company_id": company_id,
+            "overall_score": entry["score"],
+            "rank": entry["rank"],
+            "dimension_scores": entry["score_breakdown"],
+        })
+
+    def _write(item):
+        resume_id, payload = item
+        try:
+            supabase.table("resumes").update({"rankings": payload}).eq("id", resume_id).execute()
+        except Exception as e:
+            logger.error(f"Failed to update rankings for resume {resume_id}: {e}")
+
+    if resume_updates:
+        await asyncio.to_thread(
+            lambda: list(
+                concurrent.futures.ThreadPoolExecutor(max_workers=8).map(_write, resume_updates)
+            )
+        )
+
+    if ranking_rows_to_upsert:
+        try:
+            for chunk in [ranking_rows_to_upsert[i:i + 100] for i in range(0, len(ranking_rows_to_upsert), 100)]:
+                supabase.table("rankings").upsert(chunk, on_conflict="resume_id,company_id").execute()
+        except Exception as rank_e:
+            logger.error(f"Failed to batch-write to rankings table: {rank_e}")
 
 @router.post("/", response_model=CompanyInDB, status_code=201)
 def create_company(company: CompanyCreate, background_tasks: BackgroundTasks, current_user: User = Depends(get_current_user)):

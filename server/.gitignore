@@ -1,0 +1,9 @@
+.env
+venv/
+__pycache__/
+assets/models/cache/
+uploads/
+
+# Claude Code local config - not part of the app, machine/tool-specific.
+.claude/
+CLAUDE.md

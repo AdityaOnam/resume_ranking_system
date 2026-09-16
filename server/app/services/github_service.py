@@ -1,11 +1,22 @@
-import os
+import concurrent.futures
 import requests
 import re
-import math
+import time
 from typing import List, Dict, Any, Optional, Set
 import logging
 
+from app.core.config import settings
+
 logger = logging.getLogger(__name__)
+
+# Overall wall-clock budget for all GitHub enrichment on a single resume.
+# Previously the only limit was a per-request timeout=10, with one sequential
+# request per repository - a candidate with 40 repos could stall an upload for
+# minutes. Enrichment is a nice-to-have, so we take what we can get inside the
+# budget and move on rather than letting it dominate upload latency.
+GITHUB_TIME_BUDGET_SECONDS = 20.0
+GITHUB_MAX_WORKERS = 8
+GITHUB_MAX_REPOS_TO_INSPECT = 40
 
 # Map GitHub language names to canonical skill names
 LANGUAGE_TO_SKILL = {
@@ -76,8 +87,12 @@ def levenshtein_distance(s1: str, s2: str) -> int:
 
 class GitHubService:
     def __init__(self):
-        # We fetch the GITHUB_TOKEN if available, otherwise it falls back to unauthenticated (free tier)
-        self.token = os.environ.get("GITHUB_TOKEN")
+        # Read through Settings rather than os.environ: nothing in this project
+        # calls load_dotenv(), so an os.environ lookup silently misses a token
+        # set in .env and leaves us on the 60 req/hour unauthenticated tier with
+        # no error. Settings reads real env vars first (Cloud Run) and falls
+        # back to .env (local dev), so both environments behave identically.
+        self.token = settings.GITHUB_TOKEN.strip() or None
         self.headers = {"Accept": "application/vnd.github.v3+json"}
         if self.token:
             self.headers["Authorization"] = f"token {self.token}"
@@ -91,20 +106,34 @@ class GitHubService:
         if not username:
             return {"error": "Invalid GitHub URL"}
 
+        deadline = time.monotonic() + GITHUB_TIME_BUDGET_SECONDS
+
         # 1. Fetch repos
-        repos = self._fetch_repos(username)
+        repos = self._fetch_repos(username, deadline=deadline)
         if not repos:
             return {"error": "No public repositories found or rate limit exceeded"}
 
-        # 2. Fetch language breakdown per repo
-        repo_languages = self._fetch_per_repo_languages(username, repos)
+        # Most-recently-updated repos come first (the API is called with
+        # sort=updated), so capping here keeps the most relevant ones.
+        inspected_repos = repos[:GITHUB_MAX_REPOS_TO_INSPECT]
+
+        # 2. Fetch language breakdown per repo (parallel, budget-aware)
+        repo_languages = self._fetch_per_repo_languages(username, inspected_repos, deadline=deadline)
 
         # 3. Aggregate languages
-        language_stats = self._aggregate_languages(repos, repo_languages)
+        language_stats = self._aggregate_languages(inspected_repos, repo_languages)
 
         # 4. Extract skills from READMEs of matching projects
         project_titles = [p.get("title", "") for p in resume_projects if p.get("title")]
-        readme_skills = self._extract_skills_from_matched_readmes(username, repos, project_titles, embedded_links or [])
+        readme_skills = self._extract_skills_from_matched_readmes(
+            username, inspected_repos, project_titles, embedded_links or [], deadline=deadline
+        )
+
+        if time.monotonic() >= deadline:
+            logger.warning(
+                f"GitHub enrichment for '{username}' hit its {GITHUB_TIME_BUDGET_SECONDS}s budget; "
+                "returning partial results."
+            )
 
         return {
             "username": username,
@@ -118,19 +147,36 @@ class GitHubService:
         match = re.search(r"github\.com/([a-zA-Z0-9_-]+)", url)
         return match.group(1) if match else None
 
-    def _fetch_repos(self, username: str, max_pages: int = 3) -> List[Dict]:
+    def _remaining(self, deadline: Optional[float]) -> float:
+        """Seconds left in the enrichment budget (inf when no deadline is set)."""
+        if deadline is None:
+            return float("inf")
+        return deadline - time.monotonic()
+
+    def _request_timeout(self, deadline: Optional[float]) -> float:
+        """Per-request timeout, never exceeding what's left of the overall budget."""
+        return max(1.0, min(10.0, self._remaining(deadline)))
+
+    def _fetch_repos(self, username: str, max_pages: int = 3, deadline: Optional[float] = None) -> List[Dict]:
         all_repos = []
         for page in range(1, max_pages + 1):
+            if self._remaining(deadline) <= 0:
+                logger.warning("GitHub budget exhausted while paginating repos; using what we have.")
+                break
             try:
                 resp = requests.get(
                     f"https://api.github.com/users/{username}/repos",
                     params={"per_page": 100, "page": page, "sort": "updated"},
-                    timeout=10,
+                    timeout=self._request_timeout(deadline),
                     headers=self.headers
                 )
                 if resp.status_code != 200:
                     if resp.status_code == 403:
-                        logger.warning("GitHub API rate limit exceeded.")
+                        logger.warning(
+                            "GitHub API rate limit exceeded. "
+                            + ("Token is set but exhausted." if self.token
+                               else "No GITHUB_TOKEN configured - unauthenticated requests are capped at 60/hour.")
+                        )
                     break
                 repos = resp.json()
                 if not repos:
@@ -141,22 +187,46 @@ class GitHubService:
                 break
         return all_repos
 
-    def _fetch_per_repo_languages(self, username: str, repos: List[Dict]) -> Dict[str, Dict[str, int]]:
-        repo_langs = {}
-        for repo in repos:
-            repo_name = repo.get("name", "")
+    def _fetch_per_repo_languages(self, username: str, repos: List[Dict],
+                                  deadline: Optional[float] = None) -> Dict[str, Dict[str, int]]:
+        """Fetch language breakdowns concurrently.
+
+        This used to be one sequential request per repo with timeout=10 each, so
+        a candidate with 40 repos could add minutes to an upload. Now the
+        requests run on a small thread pool and the whole pass is bounded by the
+        shared enrichment deadline; repos we don't get to are simply omitted.
+        """
+        repo_names = [r.get("name", "") for r in repos if r.get("name")]
+        repo_langs: Dict[str, Dict[str, int]] = {name: {} for name in repo_names}
+        if not repo_names:
+            return repo_langs
+
+        def fetch_one(repo_name: str):
+            if self._remaining(deadline) <= 0:
+                return repo_name, {}
             try:
                 resp = requests.get(
                     f"https://api.github.com/repos/{username}/{repo_name}/languages",
-                    timeout=10,
+                    timeout=self._request_timeout(deadline),
                     headers=self.headers
                 )
                 if resp.status_code == 200:
-                    repo_langs[repo_name] = resp.json()
-                else:
-                    repo_langs[repo_name] = {}
+                    return repo_name, resp.json()
             except Exception:
-                repo_langs[repo_name] = {}
+                pass
+            return repo_name, {}
+
+        with concurrent.futures.ThreadPoolExecutor(max_workers=GITHUB_MAX_WORKERS) as pool:
+            futures = [pool.submit(fetch_one, name) for name in repo_names]
+            try:
+                for fut in concurrent.futures.as_completed(futures, timeout=max(0.1, self._remaining(deadline))):
+                    name, langs = fut.result()
+                    repo_langs[name] = langs
+            except concurrent.futures.TimeoutError:
+                logger.warning("GitHub language fetch hit the time budget; using partial language stats.")
+                for fut in futures:
+                    fut.cancel()
+
         return repo_langs
 
     def _aggregate_languages(self, repos: List[Dict], repo_languages: Dict[str, Dict[str, int]]) -> List[Dict]:
@@ -186,7 +256,8 @@ class GitHubService:
             
         return sorted(stats, key=lambda x: x["percentage"], reverse=True)
 
-    def _extract_skills_from_matched_readmes(self, username: str, repos: List[Dict], resume_projects: List[str], embedded_links: List[str]) -> Set[str]:
+    def _extract_skills_from_matched_readmes(self, username: str, repos: List[Dict], resume_projects: List[str],
+                                             embedded_links: List[str], deadline: Optional[float] = None) -> Set[str]:
         readme_skills = set()
         matched_repos = []
         repo_names = [r.get("name", "") for r in repos]
@@ -226,24 +297,42 @@ class GitHubService:
             if best_match and best_dist <= threshold:
                 matched_repos.append(best_match)
                 
-        for repo_name in set(matched_repos):
-            readme_text = self._fetch_readme(username, repo_name)
-            if readme_text:
-                for pattern in README_SKILL_PATTERNS:
-                    display = README_DISPLAY_NAMES.get(pattern, pattern.replace("\\", ""))
-                    if re.search(r"\b" + pattern + r"\b", readme_text, re.IGNORECASE):
-                        readme_skills.add(display)
-                        
+        unique_matches = list(set(matched_repos))
+        if not unique_matches:
+            return readme_skills
+
+        # Fetch the matched READMEs concurrently under the shared budget.
+        readme_texts: List[str] = []
+        with concurrent.futures.ThreadPoolExecutor(max_workers=GITHUB_MAX_WORKERS) as pool:
+            futures = [pool.submit(self._fetch_readme, username, name, deadline) for name in unique_matches]
+            try:
+                for fut in concurrent.futures.as_completed(futures, timeout=max(0.1, self._remaining(deadline))):
+                    text = fut.result()
+                    if text:
+                        readme_texts.append(text)
+            except concurrent.futures.TimeoutError:
+                logger.warning("GitHub README fetch hit the time budget; using partial README skills.")
+                for fut in futures:
+                    fut.cancel()
+
+        for readme_text in readme_texts:
+            for pattern in README_SKILL_PATTERNS:
+                display = README_DISPLAY_NAMES.get(pattern, pattern.replace("\\", ""))
+                if re.search(r"\b" + pattern + r"\b", readme_text, re.IGNORECASE):
+                    readme_skills.add(display)
+
         return readme_skills
 
-    def _fetch_readme(self, username: str, repo_name: str) -> Optional[str]:
+    def _fetch_readme(self, username: str, repo_name: str, deadline: Optional[float] = None) -> Optional[str]:
+        if self._remaining(deadline) <= 0:
+            return None
         try:
             # Note: We use a different Accept header for READMEs to get raw text
             headers = self.headers.copy()
             headers["Accept"] = "application/vnd.github.v3.raw"
             resp = requests.get(
                 f"https://api.github.com/repos/{username}/{repo_name}/readme",
-                timeout=10,
+                timeout=self._request_timeout(deadline),
                 headers=headers
             )
             if resp.status_code == 200:

@@ -7,7 +7,7 @@ import PopularCompanies from './PopularCompanies';
 import { 
   PiFileArrowUp, PiFilePdf, PiHardDrives, PiLockSimple, 
   PiFileMagnifyingGlass, PiGraph, PiRanking, PiCheckCircle,
-  PiArrowRight, PiArrowCounterClockwise, PiCheck
+  PiArrowRight, PiArrowCounterClockwise, PiCheck, PiWarningCircle, PiX
 } from 'react-icons/pi';
 
 const Dashboard = () => {
@@ -16,6 +16,9 @@ const Dashboard = () => {
   const [uploadedFile, setUploadedFile] = useState(null);
   const [uploadStep, setUploadStep] = useState(0); // 0=none, 1=uploaded, 2=parsing, 3=embedding, 4=ranked
   const [completedResumeId, setCompletedResumeId] = useState(null);
+  // Inline error surface. Replaces blocking window.alert() calls, which freeze
+  // the tab until dismissed, can't be styled, and read as a browser crash on mobile.
+  const [uploadError, setUploadError] = useState(null);
   const fileInputRef = useRef();
   const navigate = useNavigate();
   const isMountedRef = useRef(true);
@@ -53,15 +56,23 @@ const Dashboard = () => {
   const ACCEPTED_EXTENSIONS = ['.pdf', '.docx', '.doc'];
   const MAX_FILE_SIZE_BYTES = 10 * 1024 * 1024;
 
+  const failUpload = (message) => {
+    setUploadStatus('idle');
+    setUploadStep(0);
+    setUploadError(message);
+  };
+
   const handleFile = async (file) => {
     if (!file) return;
+    setUploadError(null);
     const ext = file.name.slice(file.name.lastIndexOf('.')).toLowerCase();
     if (!ACCEPTED_EXTENSIONS.includes(ext)) {
-      alert('Please upload a PDF or DOCX file.');
+      setUploadError(`"${file.name}" isn't a supported format. Upload a PDF or DOCX file.`);
       return;
     }
     if (file.size > MAX_FILE_SIZE_BYTES) {
-      alert('File is too large. Max size is 10MB.');
+      const sizeMb = (file.size / (1024 * 1024)).toFixed(1);
+      setUploadError(`That file is ${sizeMb} MB. The maximum size is 10 MB.`);
       return;
     }
     setUploadedFile(file);
@@ -80,9 +91,7 @@ const Dashboard = () => {
         const pollStatus = async (attempt = 0) => {
           if (!isMountedRef.current) return;
           if (attempt >= MAX_POLL_ATTEMPTS) {
-            setUploadStatus('idle');
-            setUploadStep(0);
-            alert('Upload is taking too long. Please try again later.');
+            failUpload('This is taking longer than expected. Your resume may still be processing — check back shortly, or try uploading again.');
             return;
           }
           try {
@@ -98,9 +107,7 @@ const Dashboard = () => {
                  navigate(`/resumes/${statusRes.data.resume_id}`);
                }, 1000);
             } else if (status === 'error') {
-               setUploadStatus('idle');
-               setUploadStep(0);
-               alert('Upload failed: ' + error);
+               failUpload(error ? `We couldn't process that resume: ${error}` : "We couldn't process that resume. Please try again.");
             } else {
                if (step === 'Parsing resume with AI...') setUploadStep(1);
                else if (step === 'Generating Embeddings...') setUploadStep(2);
@@ -112,29 +119,33 @@ const Dashboard = () => {
             }
           } catch (err) {
             if (!isMountedRef.current) return;
-            setUploadStatus('idle');
-            setUploadStep(0);
-            alert('Polling failed: ' + err.message);
+            failUpload(`Lost contact with the server while processing (${err.message}). Your resume may still have been saved.`);
           }
         };
 
         pollStatus();
       } else {
-        setUploadStatus('idle');
-        setUploadStep(0);
-        alert('Upload failed. Please try again.');
+        failUpload('The upload was rejected by the server. Please try again.');
       }
     } catch (e) {
-      setUploadStatus('idle');
-      setUploadStep(0);
-      alert('Server error: ' + e.message);
+      const detail = e?.response?.data?.detail;
+      failUpload(detail ? String(detail) : `Could not reach the server (${e.message}).`);
     }
   };
 
   const stepsData = [
     { id: 1, title: 'Parse', desc: 'Extracting sections, skills and dates.', icon: PiFileMagnifyingGlass },
     { id: 2, title: 'Embed', desc: 'Generating vectors and the ATS score.', icon: PiGraph },
-    { id: 3, title: 'Rank', desc: 'Scoring against 96 indexed companies.', icon: PiRanking },
+    // Driven off the live company count rather than a hardcoded number, which
+    // had drifted (it read "96" while the index actually held 139).
+    {
+      id: 3,
+      title: 'Rank',
+      desc: companies.length
+        ? `Scoring against ${companies.length} indexed companies.`
+        : 'Scoring against every indexed company.',
+      icon: PiRanking,
+    },
   ];
 
   const getStepState = (stepId) => {
@@ -210,6 +221,25 @@ const Dashboard = () => {
                 </div>
               )}
             </div>
+
+            {uploadError && (
+              <div
+                role="alert"
+                aria-live="assertive"
+                className="flex items-start gap-3 p-3.5 rounded-lg border border-red-500/40 bg-red-500/10"
+              >
+                <PiWarningCircle size={18} className="shrink-0 mt-0.5 text-red-400" />
+                <p className="m-0 flex-1 text-[13px] leading-[1.5] text-red-300">{uploadError}</p>
+                <button
+                  type="button"
+                  onClick={() => setUploadError(null)}
+                  aria-label="Dismiss error"
+                  className="shrink-0 p-0.5 -m-0.5 text-red-400/70 hover:text-red-300 transition-colors"
+                >
+                  <PiX size={15} />
+                </button>
+              </div>
+            )}
 
             <div className="flex items-center flex-wrap gap-x-[18px] gap-y-2 text-xs text-muted">
               <span className="flex items-center gap-1.5 whitespace-nowrap"><PiFilePdf size={14} />PDF or DOCX</span>

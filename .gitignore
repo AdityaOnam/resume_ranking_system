@@ -31,3 +31,11 @@ yarn-error.log*
 # Downloaded ML model cache (HF_HOME/TRANSFORMERS_CACHE) - large binaries,
 # re-downloaded per machine from MODEL_CACHE_DIR in server/.env, never committed.
 /server/assets/models/cache/
+
+# Claude Code local config - not part of the app, machine/tool-specific.
+.claude/
+client/.claude/
+server/.claude/
+CLAUDE.md
+client/CLAUDE.md
+server/CLAUDE.md
