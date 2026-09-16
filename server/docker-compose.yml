@@ -21,9 +21,6 @@ services:
       - .env
     environment:
       OLLAMA_HOST: http://ollama:11434
-    volumes:
-      - model_cache:/app/models/cache
 
 volumes:
   ollama_data:
-  model_cache:
