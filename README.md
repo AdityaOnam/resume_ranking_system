@@ -187,7 +187,8 @@ Currently deployed on an AWS EC2 instance (`ap-south-1`), fronting port `10000` 
 
 | Name | Role |
 |---|---|
-| **Aditya Onam** ([@AdityaOnam](https://github.com/AdityaOnam)) | Architecture, ML/ranking pipeline, LLM integration, frontend redesign, cloud deployment — current sole maintainer |
+| **Aditya Onam** ([@AdityaOnam](https://github.com/AdityaOnam)) | Architecture, ML/ranking pipeline, LLM integration, frontend redesign, cloud deployment — current maintainer |
+| **Aditya Gupta** ([@code-epic-adi](https://github.com/code-epic-adi)) | Backend fixes and the Groq LLM migration work on the deployment branch |
 
 **Original contributors (v1 — Node.js/MongoDB era):**
 
