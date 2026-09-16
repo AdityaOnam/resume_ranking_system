@@ -13,7 +13,7 @@
 [![Groq](https://img.shields.io/badge/LLM-Groq-orange)](server/app/services/llm_service.py)
 [![Deployed on AWS](https://img.shields.io/badge/deployed-AWS%20EC2-ff9900)](#deployment)
 
-**[Live Frontend](https://resume-ranker-frontend-psi.vercel.app)** · **[Backend API](http://13.202.91.239:10000)** · **[API Docs (Swagger)](http://13.202.91.239:10000/docs)**
+**[Live Frontend](https://resume-ranker-frontend-psi.vercel.app)** · **[Backend API](https://13-202-91-239.sslip.io)** · **[API Docs (Swagger)](https://13-202-91-239.sslip.io/docs)**
 
 </div>
 
@@ -171,7 +171,7 @@ docker compose build
 docker compose up -d
 ```
 
-Currently deployed on an AWS EC2 instance (`ap-south-1`), fronting port `10000` directly. The frontend is deployed separately on Vercel.
+Currently deployed on an AWS EC2 instance (`ap-south-1`), fronted by a Caddy reverse proxy (`server/Caddyfile`) that terminates HTTPS with an auto-provisioned Let's Encrypt certificate — no domain purchase needed, using an [sslip.io](https://sslip.io) hostname that resolves directly to the instance's IP. The backend container itself is only reachable on the internal Docker network; Caddy is the sole public entry point (ports 80/443). The frontend is deployed separately on Vercel.
 
 ## How to Use the Application
 
@@ -202,7 +202,6 @@ Currently deployed on an AWS EC2 instance (`ap-south-1`), fronting port `10000` 
 ## Scope for Improvement
 
 - **Postgres Row-Level Security.** User-data isolation is currently enforced entirely in application code (`.eq("user_id", ...)` filters); there's no database-level backstop if a future endpoint forgets a filter.
-- **HTTPS in front of the backend.** The EC2 deployment currently serves plain HTTP on port 10000 — a reverse proxy (Caddy/nginx) with a domain + TLS is the natural next step.
 - **CI/CD.** Deploys are currently manual (SSH + `docker compose`); a GitHub Actions pipeline would automate build/push/redeploy.
 - **Automated tests.** `server/tests/` are ad-hoc manual scripts, not a pytest suite with CI coverage.
 - **CORS for preview deployments.** The `FRONTEND_ORIGINS` allowlist is an exact match, so Vercel's per-branch preview URLs can't reach the API today.
