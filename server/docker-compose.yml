@@ -2,7 +2,24 @@ services:
   backend:
     build: .
     restart: unless-stopped
-    ports:
-      - "10000:10000"
+    expose:
+      - "10000"
     env_file:
       - .env
+
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    depends_on:
+      - backend
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile
+      - caddy_data:/data
+      - caddy_config:/config
+
+volumes:
+  caddy_data:
+  caddy_config:
