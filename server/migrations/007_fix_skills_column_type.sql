@@ -6,9 +6,14 @@
 -- Pydantic response validation on GET /resumes/{id} (response_model=ResumeInDB
 -- declares skills: List[Dict[str, Any]]) with a 500 error.
 --
--- Postgres doesn't allow a correlated subquery inside ALTER COLUMN ... USING
--- ("cannot use subquery in transform expression"), so the per-row text[] ->
--- jsonb conversion is done via a throwaway helper function instead.
+-- Two Postgres gotchas handled here:
+-- 1. ALTER COLUMN ... USING can't contain a correlated subquery ("cannot use
+--    subquery in transform expression"), so the per-row text[] -> jsonb
+--    conversion goes through a throwaway helper function instead.
+-- 2. The column's existing text[] DEFAULT can't be auto-cast to jsonb, so it
+--    must be dropped before the TYPE change and re-added after.
+ALTER TABLE resumes ALTER COLUMN skills DROP DEFAULT;
+
 CREATE OR REPLACE FUNCTION _rr_text_array_to_jsonb(arr text[]) RETURNS jsonb AS $$
 DECLARE
   result jsonb := '[]'::jsonb;
